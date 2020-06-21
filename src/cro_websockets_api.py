@@ -4,12 +4,12 @@ Forked from from https://crypto.com/exchange-doc#sub-api-ex-python-2
 
 import urllib
 from urllib.parse import urlencode, quote_plus
-import requests
 import hmac
 import hashlib
 import time
 import random
 import os
+import json
 
 import asyncio
 import websockets
@@ -27,28 +27,21 @@ class CryptoWebsocketAPI:
         self.apikey = key
         self.apisec = sec
         # self.init_websocket()
+
+
+    async def disconnect(self):
+        if self.ws:
+            await self.ws.close()
+            print('closed conneciton...')
         
-    async def init_websocket(self):
-        req = {
+    async def gen_base_request_params(self):
+        return {
             "id": random.randint(0,1000000000),
-            "method": "public/auth",
+            "method": "",
             "api_key": self.apikey,
             "nonce": int(time.time() * 1000)
         }
-
-        sig = self.sign(req)
-
-        payload = req
-        payload['sig'] = sig
-
-        print(payload['sig'])
-
-        async with websockets.connect('wss://stream.crypto.com/v2/user') as ws:
-            await ws.send(payload)
-
-            response = await ws.recv()
-            print(response)
-        
+    
     def sign(self, req):
         paramString = ""
 
@@ -64,6 +57,50 @@ class CryptoWebsocketAPI:
             msg=bytes(sigPayload, 'utf-8'),
             digestmod=hashlib.sha256
         ).hexdigest()
+
+    async def init_websocket(self):
+        req = await self.gen_base_request_params()
+        req["method"] = "public/auth"
+        sig = self.sign(req)
+        payload = req
+        payload['sig'] = sig
+
+        # async with websockets.connect('wss://stream.crypto.com/v2/user') as ws:
+        #     await ws.send(json.dumps(payload))
+
+        #     response = await ws.recv()
+        #     print(response)
+
+        #     await self.subscribe_trade(ws)
+        self.ws = await websockets.client.connect('wss://stream.crypto.com/v2/user')
+        await self.ws.send(json.dumps(payload))
+        response = await self.ws.recv()
+        print(response)
+        
+
+    async def subscribe_market(self, ws):
+
+        req = await self.gen_base_request_params()
+        req['method'] = "public/get-instruments"
+        # req['params'] = dict(
+        #     channels=["ticker.CRO_BTC"]
+        # )
+        await ws.send(json.dumps(req))
+
+        response = await ws.recv()
+        print(response)
+
+
+    async def subscribe_trade(self, ws):
+
+        req = await self.gen_base_request_params()
+        req['method'] = "subscribe"
+        req['params'] = { "channels": ["trade.MCO_BTC"]}
+
+        await ws.send(json.dumps(req))
+
+        response = await ws.recv()
+        print(response)
 
 
     def http_get(self, url, params):
@@ -161,3 +198,4 @@ if __name__ == '__main__':
 
     api = CryptoWebsocketAPI(key=api_key, sec=secret)
     asyncio.get_event_loop().run_until_complete(api.init_websocket())
+    asyncio.get_event_loop().run_until_complete(api.disconnect())
