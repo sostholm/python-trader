@@ -4,3 +4,6 @@ graphene
 mongoengine
 graphene_mongo
 websockets
+starlette-jwt
+pyjwt
+aiohttp

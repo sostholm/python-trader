@@ -1,7 +1,3 @@
-"""
-Forked from from https://crypto.com/exchange-doc#sub-api-ex-python-2
-"""
-
 import urllib
 from urllib.parse import urlencode, quote_plus
 import hmac
@@ -21,18 +17,18 @@ def get_timestamp():
 
 
 class CryptoWebsocketAPI:
-    def __init__(self, key, sec):
+
+    subscriptions = {}
+    responses = {}
+    send_queue = {}
+    ws = {}
+
+    def __init__(self, key='', sec=''):
         self.timeout = 1000
-        self.apiurl = "https://api.crypto.com"
         self.apikey = key
         self.apisec = sec
+        self.running= True
         # self.init_websocket()
-
-
-    async def disconnect(self):
-        if self.ws:
-            await self.ws.close()
-            print('closed conneciton...')
         
     async def gen_base_request_params(self):
         return {
@@ -58,6 +54,14 @@ class CryptoWebsocketAPI:
             digestmod=hashlib.sha256
         ).hexdigest()
 
+    async def auth_request(self):
+        req = await self.gen_base_request_params()
+        req["method"] = "public/auth"
+        sig = self.sign(req)
+        payload = req
+        payload['sig'] = sig
+        return req
+
     async def init_websocket(self):
         req = await self.gen_base_request_params()
         req["method"] = "public/auth"
@@ -65,132 +69,238 @@ class CryptoWebsocketAPI:
         payload = req
         payload['sig'] = sig
 
-        # async with websockets.connect('wss://stream.crypto.com/v2/user') as ws:
-        #     await ws.send(json.dumps(payload))
+        self.ws['market'] = await websockets.client.connect('wss://stream.crypto.com/v2/market')
+        self.send_queue['market'] = []
+        asyncio.ensure_future(self.send_loop('market'))
+        asyncio.ensure_future(self.receive_loop('market'))
 
-        #     response = await ws.recv()
-        #     print(response)
+        if self.apikey != '' and self.apisec != '':
 
-        #     await self.subscribe_trade(ws)
-        self.ws = await websockets.client.connect('wss://stream.crypto.com/v2/user')
-        await self.ws.send(json.dumps(payload))
-        response = await self.ws.recv()
-        print(response)
+            self.ws['user'] = await websockets.client.connect('wss://stream.crypto.com/v2/user')
+            await self.ws['user'].send(json.dumps(payload))
+            response = await self.ws['user'].recv()
+            print(response)
+            self.send_queue['user'] = []
+
+            asyncio.ensure_future(self.send_loop('user'))
+            asyncio.ensure_future(self.receive_loop('user'))
+
         
-
-    async def subscribe_market(self, ws):
-
-        req = await self.gen_base_request_params()
-        req['method'] = "public/get-instruments"
-        # req['params'] = dict(
-        #     channels=["ticker.CRO_BTC"]
-        # )
-        await ws.send(json.dumps(req))
-
-        response = await ws.recv()
-        print(response)
-
-
-    async def subscribe_trade(self, ws):
-
-        req = await self.gen_base_request_params()
-        req['method'] = "subscribe"
-        req['params'] = { "channels": ["trade.MCO_BTC"]}
-
-        await ws.send(json.dumps(req))
-
-        response = await ws.recv()
-        print(response)
-
-
-    def http_get(self, url, params):
-        headers = {
-            'Content-Type': "application/x-www-form-urlencoded"
-        }
-        data = urlencode(params or {})
-        try:
-            response = requests.get(url, data, headers=headers, timeout=self.timeout)
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return {"code": -1, "msg": "response status:%s" % response.status_code}
-        except Exception as e:
-            print("httpGet failed, detail is:%s" % e)
-            return {"code": -1, "msg": e}
-
-    def http_post(self, url, params):
-        headers = {
-            "Content-type": "application/x-www-form-urlencoded",
-        }
-        data = urlencode(params or {})
-        try:
-            response = requests.post(url, data, headers=headers, timeout=self.timeout)
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return {"code": -1, "msg": "response status:%s" % response.status_code}
-        except Exception as e:
-            print("httpPost failed, detail is:%s" % e)
-            return {"code": -1, "msg": e}
-
-    def api_key_get(self, url, params):
-        if not params:
-            params = {}
-        params["api_key"] = self.apikey
-        params["time"] = get_timestamp()
-        params["sign"] = self.create_sign(params)
-        return self.http_get(url, params)
-
-    def api_key_post(self, url, params):
-        if not params:
-            params = {}
-        params["api_key"] = self.apikey
-        params["time"] = get_timestamp()
-        params["sign"] = self.create_sign(params)
-        return self.http_post(url, params)
-
-    def create_sign(self, params):
-        sorted_params = sorted(params.items(), key=lambda d: d[0], reverse=False)
-        s = "".join(map(lambda x: str(x[0]) + str(x[1] or ""), sorted_params)) + self.apisec
-        h = hashlib.sha256(s.encode('utf-8'))
-        return h.hexdigest()
-
-    def depth(self, sym):
-        pass
-
-    def balance(self):
-        pass
-
-    def get_all_orders(self, sym):
-        pass
-
-    def get_order(self, sym, oid):
-        pass
-
-    def get_ordst(self, sym, oid):
         
-        # if ('code' in res) and (res['code']=='0') and ('order_info' in res['data']):
-        #     return res['data']['order_info']['status']
-        # return -1
-        pass
-
-    def get_open_orders(self, sym):
-        pass
-
-    def get_trades(self, sym):
-        pass
-
-    def cancel_order(self, sym, oid):
-        pass
-
-    def cancel_order_all(self, sym):
-        pass
-
-
-    def create_order(self, sym, side, prx, qty):
-        pass
+    async def send_loop(self, socket_type):
+        while self.ws[socket_type].open:
+            while len(self.send_queue[socket_type]) > 0:
+                next_request = self.send_queue[socket_type].pop()
+                print(f'sending request: {next_request}')
+                await self.ws[socket_type].send(json.dumps(next_request))
+            await asyncio.sleep(0.5)
+        
+    async def receive_loop(self, socket_type):
+        while self.running:
+            # code = 1006 (connection closed abnormally [internal]), no reason
+            if not self.ws[socket_type].open:
+                if socket_type == 'market':
+                    self.ws['market'] = await websockets.client.connect('wss://stream.crypto.com/v2/market', ping_interval=None)
+                else:
+                    self.ws['user'] = await websockets.client.connect('wss://stream.crypto.com/v2/user', ping_interval=None)
+                    await self.ws['user'].send(json.dumps(self.auth_request()))
             
+            try:
+                received = json.loads(await self.ws[socket_type].recv())
+                
+                print(f'received: {received}')
+                if 'method' in received and received['method'] == 'public/heartbeat':
+                    self.send_queue[socket_type].append({"id": received['id'], "method": 'public/respond-heartbeat'})
 
+                if 'id' in received:
+                    self.responses[received['id']] = received
+                else:
+                    self.responses[received['result']['subscription']] = received['result']
+            
+            except websockets.exceptions.ConnectionClosed:
+                print('connection closed...')
+                self.running = False
+
+    async def get_response(self, request, socket_type):
+        self.send_queue[socket_type].append(request)
+
+        while request['id'] not in self.responses:
+            await asyncio.sleep(0.5)
+        
+        return self.responses[request['id']]
+
+    async def subscribe_user(self, channel, method):
+        req = await self.gen_base_request_params()
+        req['method'] = method
+        req['params'] = { "channels": [channel]}
+        
+        self.send_queue['user'].append(req)
+
+        return req
+
+    async def subscribe_market(self, instruments, channel, method):
+        if not isinstance(instruments, list):
+            instruments = [instruments]
+
+        req = await self.gen_base_request_params()
+        req['method'] = method
+
+        channels = [f"{channel}.{instrument}" for instrument in instruments]    
+        req['params'] = { "channels": channels}
+        del req['api_key']
+        
+        self.send_queue['market'].append(req)
+
+        return req
+
+    async def get_request_generator(self, req, socket_type):
+        if 'response' not in locals():
+            response = ''
+
+        while self.ws[socket_type].open:
+            while req['params']['channels'][0] not in self.responses or self.responses[req['params']['channels'][0]] == response:
+                await asyncio.sleep(0.5)
+            
+            response = self.responses[req['params']['channels'][0]]
+            yield response
+
+    async def subscribe_to_request(self, req, socket_type, frequency=5):
+
+        if 'response' not in locals():
+            response = ''
+
+        if 'sleep' not in locals():
+            sleep = False
+
+        while self.ws[socket_type].open:
+                if sleep:
+                    await asyncio.sleep(frequency)
+                
+                req['nonce'] = int(time.time() * 1000)
+                fresh_response = await self.get_response(req, socket_type)
+                
+                if fresh_response == response:
+                    sleep = True
+                    continue
+                else:
+                    sleep = True
+                    response = fresh_response
+                    yield response
+
+    async def balance(self):
+        req = await self.gen_base_request_params()
+        req['method'] = "private/get-account-summary"
+        req['params'] = {}
+
+        
+        return req
+        
+    async def get_all_open_orders(self, instrument_name='', page_size=20, page=0):
+        req = await self.gen_base_request_params()
+        req['method'] = "private/get-open-orders"
+        req['params'] = {}
+
+        if instrument_name != '':
+            req['params'] = {
+                'instrument_name': instrument_name,
+                'page_size': page_size,
+                'page': page
+            }
+
+        return req
+
+    async def get_order_details(self, oid):
+        req = await self.gen_base_request_params()
+        req['method'] = "private/get-open-orders"
+        req['params'] = {'order_id':oid}
+
+        return req
+
+    async def get_trades(self, instrument_name='', start=None, end=None, page_size=20, page=0):
+        req = await self.gen_base_request_params()
+        req['method'] = "private/get-open-orders"
+        req['params'] = {
+            'instrument_name': instrument_name,
+            'page_size': page_size,
+            'page': page,
+            'start_ts': start,
+            'end_ts': end
+        }
+
+        if instrument_name != '':
+            req['params']['instrument_name'] = instrument_name
+
+        return req
+
+    async def cancel_all_orders(self, instrument_name):
+        req = await self.gen_base_request_params()
+        req['method'] = "private/cancel-all-orders"
+        req['params'] = {'instrument_name': instrument_name}
+
+        return req
+
+    async def cancel_order(self, instrument_name, order_id):
+        req = await self.gen_base_request_params()
+        req['method'] = "private/cancel-order"
+        req['params'] = {
+            'instrument_name': instrument_name,
+            'order_id': order_id
+        }
+
+        return req
+
+    async def create_order(self, instrument_name, side, order_type, price, quantity, client_oid=None):
+        req = await self.gen_base_request_params()
+        req['method'] = "private/cancel-order"
+        req['params'] = {
+            'instrument_name': instrument_name,
+            'side': side,
+            'type': order_type,
+            'price': price,
+            'quantity': quantity,
+        }
+
+        if client_oid:
+            req['params']['client_oid'] = client_oid
+
+        return req
+            
+async def print_subscription(api):
+    #req = await api.subscribe_market(channel='candlestick.1m.CRO_BTC', method='subscribe')
+    req = await api.subscribe_market(channel='trade.CRO_BTC', method='subscribe')
+    gen = api.get_request_generator(req=req, socket_type='market')
+    async for candle in gen:
+        for trade in candle['data']:
+            price = trade['p']
+            quantity = trade['q']
+            print(f'price: {int(price*100000000)}s, quantity: {int(quantity)}')
+
+async def print_user_trades(api):
+    req = await api.subscribe_user(channel='user.trade', method='subscribe')
+    gen = api.get_request_generator(req=req, socket_type='user')
+    async for response in gen:
+        for trade in response['data']:
+            status = trade['status']
+            side = trade['side']
+            price = trade['price']
+            quantity = trade['quantity']
+            instrument = trade['instrument_name']
+
+            print(f'instrument: {instrument}, quantity: {quantity}, side: {side}, price: {price}')
+
+async def print_user_balance(api):
+    req = await api.subscribe_user(channel='user.balance', method='subscribe')
+    gen = api.get_request_generator(req=req, socket_type='user')
+    async for response in gen:
+        for update in response['data']:
+            print(update)
+
+
+async def subscribe_request(api):
+    req = await api.get_all_open_orders()
+    gen = api.subscribe_to_request(req=req, socket_type='user')
+    async for response in gen:
+        print('open orders changed: '+ str(response))
 
 if __name__ == '__main__':
     api_key = os.environ['api_key']
@@ -198,4 +308,8 @@ if __name__ == '__main__':
 
     api = CryptoWebsocketAPI(key=api_key, sec=secret)
     asyncio.get_event_loop().run_until_complete(api.init_websocket())
-    asyncio.get_event_loop().run_until_complete(api.disconnect())
+    asyncio.get_event_loop().run_until_complete(subscribe_request(api=api))
+    # asyncio.get_event_loop().run_until_complete(api.balance())
+    # asyncio.get_event_loop().run_until_complete(api.get_all_open_orders())
+    # asyncio.get_event_loop().run_until_complete(print_user_balance(api))
+    #asyncio.get_event_loop().run_until_complete(asyncio.gather(print_subscription(api), print_user_trades(api)))

@@ -5,8 +5,10 @@ from graphene_mongo import MongoengineConnectionField, MongoengineObjectType
 from datetime       import datetime
 from mongoengine    import Document, EmbeddedDocument
 from mongoengine    import (DateTimeField, FloatField, StringField, IntField,
-ReferenceField, ListField, EmbeddedDocumentListField, DictField)
+ReferenceField, ListField, EmbeddedDocumentListField, DictField, BinaryField)
 
+import aiohttp
+import json
 
 # class Order(graphene.ObjectType):
 #     side        = StringField()
@@ -40,25 +42,45 @@ class Order(graphene.ObjectType):
 
 
 class Position(EmbeddedDocument):
-    currency_pair   = StringField()
+    currency_pair   = ReferenceField('CurrencyPair')
     held_currency   = StringField()
     amount          = FloatField()
     date            = DateTimeField()
     full_info       = DictField()
 
-class Market(graphene.ObjectType):
-    pass
+class Trade(EmbeddedDocument):
+    quantity        = FloatField()
+    trade_type      = StringField()
+    price           = FloatField()
+    timestamp       = DateTimeField()
+
+class CurrencyPair(Document):
+    meta            = {'collection': 'currency_pairs'}
+    trades = EmbeddedDocumentListField(Trade)
+    pair = StringField()
+
+
+class Exchange(Document):
+    meta            = {'collection': 'exchanges'}
+    name            = StringField()
+    exchange_api    = StringField()
+    instruments_url = StringField()
+    currency_pairs  = ListField(ReferenceField(CurrencyPair))
+    loop_state      = StringField(default="stopped", choices=["running","halting","stopped"])
+    subscriptions   = ListField(StringField())
 
 class User(Document):
-    meta        = {'collection': 'users'}
-    username    = StringField(required=True)
-    password    = StringField(required=True)
-    api_key     = StringField(required=False)
-    secret      = StringField(required=False)
-    balance     = graphene.List(Position)
-    position_history = EmbeddedDocumentListField(Position)
-    orders      = graphene.List(Order)
-    order_history    = graphene.List(Order)
+    meta            = {'collection': 'users'}
+    username        = StringField(required=True)
+    password        = StringField(required=True)
+    api_key         = StringField(required=False)
+    secret          = StringField(required=False)
+    loop_state      = StringField(default="stopped", choices=["running","halting","stopped"])
+    subscriptions   = DictField()
+    balance         = graphene.List(Position)
+    position_history= EmbeddedDocumentListField(Position)
+    orders          = graphene.List(Order)
+    order_history   = graphene.List(Order)
 
 
 class UserNode(MongoengineObjectType):
@@ -66,14 +88,29 @@ class UserNode(MongoengineObjectType):
         model = User
         interfaces = (Node,)
 
+class ExchangeNode(MongoengineObjectType):
+    class Meta:
+        model = Exchange
+        interfaces = (Node,)
+
+    instruments = graphene.JSONString()
+
+    async def resolve_instruments(self, info):
+        if self.instruments_url:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(self.instruments_url) as resp:
+                    print(resp.status)
+                    resp = await resp.text()
+                    print(resp)
+                    return json.loads(resp)
+        
 
 class PositionNode(MongoengineObjectType):
     class Meta:
         model = Position
         interfaces = (Node,)
 
-
-# class OrderNode(MongoengineObjectType):
-#     class Meta:
-#         model = Order
-#         interfaces = (Node,)
+class OrderNode(graphene.ObjectType):
+    class Meta:
+        model = Order
+        interfaces = (Node,)
