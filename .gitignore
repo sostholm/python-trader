@@ -13,3 +13,8 @@ src/__pycache__/schema.cpython-38.pyc
 src/__pycache__/models.cpython-38.pyc
 src/__pycache__/jwt_auth.cpython-38.pyc
 src/__pycache__/crypto_dot_com_api.cpython-38.pyc
+ws_test.js
+src/__pycache__/background_process.cpython-38.pyc
+src/__pycache__/mutations.cpython-38.pyc
+src/__pycache__/cro_websockets_api.cpython-38.pyc
+src/starlette
