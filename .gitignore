@@ -1,7 +1,3 @@
-src/__pycache__/crypto_dot_com_api.cpython-37.pyc
-src/__pycache__/models.cpython-37.pyc
-src/__pycache__/schema.cpython-37.pyc
-__pycache__/crypto_dot_com_api.cpython-37.pyc
 .vscode/launch.json
 order.json
 .vscode/settings.json
@@ -9,12 +5,7 @@ private_key.pem
 private_key.txt
 public_key.txt
 public_key.pem
-src/__pycache__/schema.cpython-38.pyc
-src/__pycache__/models.cpython-38.pyc
-src/__pycache__/jwt_auth.cpython-38.pyc
-src/__pycache__/crypto_dot_com_api.cpython-38.pyc
 ws_test.js
-src/__pycache__/background_process.cpython-38.pyc
-src/__pycache__/mutations.cpython-38.pyc
-src/__pycache__/cro_websockets_api.cpython-38.pyc
 src/starlette
+webpush.txt
+*.pyc

@@ -7,7 +7,7 @@ from urllib.parse import urlencode, quote_plus
 import requests
 import hashlib
 import time
-
+import aiohttp
 
 def get_timestamp():
     ts = "%d"%int(round(time.time() * 1000))
@@ -20,15 +20,17 @@ class CryptoAPI:
         self.apiurl = "https://api.crypto.com"
         self.apikey = key
         self.apisec = sec
+
         return
 
+    
     def http_get(self, url, params):
         headers = {
             'Content-Type': "application/x-www-form-urlencoded"
         }
         data = urlencode(params or {})
         try:
-            response = requests.get(url, data, headers=headers, timeout=self.timeout)
+            response = self.session.get(url, data, headers=headers, timeout=self.timeout)
             if response.status_code == 200:
                 return response.json()
             else:

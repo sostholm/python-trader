@@ -1,0 +1,1 @@
+from .erc20_abi import ERC20_ABI

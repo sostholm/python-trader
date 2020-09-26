@@ -7,3 +7,4 @@ websockets
 starlette-jwt
 pyjwt
 aiohttp
+bcrypt

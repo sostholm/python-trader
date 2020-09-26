@@ -88,7 +88,7 @@ class CryptoWebsocketAPI:
         
         
     async def send_loop(self, socket_type):
-        while self.ws[socket_type].open:
+        while self.running:
             while len(self.send_queue[socket_type]) > 0:
                 next_request = self.send_queue[socket_type].pop()
                 print(f'sending request: {next_request}')

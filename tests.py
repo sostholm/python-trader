@@ -1,3 +1,8 @@
 import requests
 
-print(requests.post('http://localhost:8000/login', json = {'username':'samson', 'password': 'BmPW0W8s1^@l'}).text)
+url = 'http://localhost:8000/login'
+myobj = {'username': 'samson', 'password': 'C@frr^Sn87z4NE4n*Qq'}
+
+x = requests.post(url, data = myobj)
+
+print(x.text)

@@ -1,9 +1,3 @@
-# from crypto_dot_com_api import CryptoAPI
-
-# if __name__ == "__main__":
-#     api = CryptoAPI(api_key, secret)
-#     print('attempting to print balance')
-#     print(api.balance())
 from graphql.execution.executors.asyncio import AsyncioExecutor
 from starlette.applications import Starlette
 from starlette.responses    import JSONResponse
@@ -14,6 +8,10 @@ from starlette.middleware.cors  import CORSMiddleware
 from starlette.background       import BackgroundTask
 from starlette.authentication   import requires
 from starlette.concurrency      import run_in_threadpool
+from starlette.applications     import Starlette
+from starlette_jwt              import JWTAuthenticationBackend
+from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
 import uvicorn
 import graphene
@@ -22,20 +20,26 @@ import jwt
 import datetime
 import bcrypt
 import asyncio
-from mongoengine import connect
-from models import User, CurrencyPair, Trade, Exchange
-from schema import Query, Mutation
-from encrypt import password_decrypt
-from bson import ObjectId
+import os
+import time
+from models         import User, Exchange, CoinGecko
+from schema         import Query, Mutation
+from encrypt        import password_decrypt
+from bson           import ObjectId
 # from database import init_db
-from schema import schema
+from schema         import schema
 # from timermiddleware import TimerMiddleware
-from cro_websockets_api import CryptoWebsocketAPI
+import background_process
 
-connect('trader', host=f'mongodb://pine64:27017')
-schema = graphene.Schema(query=Query, mutation=Mutation)
+# connect('trader', host=f'mongodb://pine64:27017', username='root', password=os.environ["PASSWORD"], authentication_source='admin')
 
+# mongodb://root:*****@pine64:27017
 
+# schema = graphene.Schema(query=Query, mutation=Mutation)
+
+# loop = asyncio.get_event_loop()
+# client = MongoClient(f'mongodb://root:{os.environ["PASSWORD"]}@pine64:27017')
+# db = client.trader
 
 async def helloworld(request):
     return JSONResponse({'hello': 'world'})
@@ -55,63 +59,6 @@ async def login(request):
     return JSONResponse(response)
 
 
-async def background_user_sync(user):
-    api = CryptoWebsocketAPI(key=user.api_key_decrypted, sec=user.secret_decrypted)
-    
-    user.loop_state = "running"
-    while user.loop_state == "running":
-        print('running')
-        await asyncio.sleep(5)
-        user = User.objects(username=user.username).first()
-
-
-
-async def background_sync(exchange_id):
-    exchange = Exchange.objects(id=ObjectId(exchange_id)).first()
-    api = all_api[exchange.exchange_api]()
-    await api.init_websocket()
-    subscriptions = exchange.subscriptions
-    req = await api.subscribe_market(instruments=subscriptions, channel='trade', method='subscribe')
-    gen = api.get_request_generator(req=req, socket_type='market')
-
-    currencies = {currency.pair: currency for currency in CurrencyPair.objects}
-
-    update_count = 0
-
-    async for candle in gen:
-        for trade in candle['data']:
-            
-            price = int(trade['p'] *100000000)
-            quantity = trade['q']
-            timestamp = datetime.datetime.fromtimestamp(trade['t'] / 1000)
-
-            trade = Trade(timestamp=timestamp, price=price, quantity=quantity)
-            currencies[candle['instrument_name']].trades.append(trade)
-            
-            if update_count > 10:
-                await run_in_threadpool(add_to_database, currencies)
-                update_count = 0
-
-            print(f'price: {price}s, quantity: {int(quantity)}')
-
-            update_count += 1
-
-def add_to_database(currencies):
-    for currency in currencies.values():
-        if currency.trades.count() > 10000:
-            [currency.trades.remove(trade) for trade in currency.trades[:1000]]
-        currency.save()
-
-async def start_background_sync(test):
-    task = BackgroundTask(background_sync)
-    message = {'status': 'starting...'}
-    return JSONResponse(message, background=task)
-# @requires('authenticated')
-# async def background_sync(request):
-#     task = BackgroundTask(background_sync, api_key='key', secret='secret')
-#     return JSONResponse(json.dumps(dict(success=True)), background=task)
-
-
 async def authenticate(msg):
 
     user = User.objects(username=msg['username']).first()
@@ -122,14 +69,28 @@ async def authenticate(msg):
     if not bcrypt.checkpw(msg['password'].encode(), user.password.encode()):
         raise Exception('Wrong Username/Password')
 
-    if user.api_key != None and user.secret != None:
-        user.__dict__['api_key_decrypted'] = password_decrypt(user.api_key, msg['password'])
-        user.__dict__['secret_decrypted'] = password_decrypt(user.secret, msg['password'])
+    user.__dict__['password_decrypted'] = msg['password']
+    user.__dict__['exchanges'] = {}
+    for account in user.accounts:
+        user.__dict__['exchanges'][account.exchange.name] = {
+            'api_key': password_decrypt(account.api_key.encode('utf-8'), msg['password']).decode('utf-8'),
+            'api_secret': password_decrypt(account.secret.encode('utf-8'), msg['password']).decode('utf-8')
+        }
+
+    user.__dict__['wallets'] = {}
+    for wallet in user.wallets:
+        user.__dict__['wallets'][wallet.wallet_type] = {
+            'address': wallet.address,
+            'tokens': wallet.tokens
+        }
+
+    if user.loop_state != 'running':
+        asyncio.create_task(run_in_threadpool(background_process.background_user_sync, app, user))
+
     return user
 
 async def WS(websocket):
     await websocket.accept()
-    # Process incoming messages
 
     msg             = ''
     user            = None
@@ -145,39 +106,76 @@ async def WS(websocket):
 
         if not user:
             try:
-                user = await authenticate(msg)
+                user = await authenticate(msg['payload'])
+                await websocket.send_json({"id": msg['id'], "payload":"success"})
                 continue
             except Exception as e:
                 print(f'error during auth: {e}')
-                websocket.close()
+                await websocket.close()
 
         print(f'received: {msg}')
-        if 'start' in msg:
-            if msg['start'] == 'background_sync' and 'exchange' in msg:
-                asyncio.ensure_future(background_sync(msg['exchange']))
-                continue
-            if msg['start'] == 'background_user_sync':
-                background_sync(user, )
-                continue
+        app.mongo.reload()
+        # if msg['payload'].lower().startswith('query') or msg['payload'].lower().startswith('\nquery'):
+        result = await schema.execute(msg['payload'], executor=AsyncioExecutor(loop=asyncio.get_running_loop()), return_promise=True, context={'user': user, 'app': app})
+        # else:
+        #     result = schema.execute(msg['payload'], context={'user': user, 'app': app})
 
-        result = schema.execute(msg, executor=AsyncioExecutor(loop=asyncio.get_running_loop()))
-        await websocket.send_json(result)
+        if not result.data and result.errors:
+            await websocket.send_json({"id": msg['id'], "error": result.errors})
+
+        await websocket.send_json({"id": msg['id'], "payload": result.data})
     await websocket.close()
+
+# class DBMiddleware:
+#     async def resolve(self, next, root, info, **args):
+#         start = time.time()
+#         results = next(root, info, **args)
+#         # coin_gecko = info.context['request'].app.mongo.coin_gecko.find_one()
+#         # info.context['coin_gecko'] = coin_gecko
+#         print(f'request {time.time() - start}s')
+#         return results
 
 routes = [
     Route('/', helloworld),
     Route('/login', login, methods=['POST']),
-    Route('/start_background_sync', start_background_sync),
     WebSocketRoute('/ws', WS),
     Route('/graphql', GraphQLApp(schema=schema, executor_class=AsyncioExecutor))
     ]
 
+class TimerMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        tic = time.perf_counter()
+        response = await call_next(request)
+        toc = time.perf_counter()
+        print(f'{round(toc-tic, 2)}s')
+        return response
+
 middleware = [
-    # Middleware(TimerMiddleware),
+    Middleware(TimerMiddleware),
     Middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*']),
+    Middleware(AuthenticationMiddleware, backend=JWTAuthenticationBackend(secret_key='secret', prefix='JWT'))
 ]
 
-app = Starlette(debug=True, routes=routes, middleware=middleware)
+def on_startup():
+    coin_gecko = CoinGecko.objects().first()
+    if coin_gecko.loop_state != 'running':
+        coin_gecko.loop_state = 'running'
+        coin_gecko.save()
+    
+    for user in User.objects():
+        user.loop_state = 'stopped'
+        user.save()
+
+    asyncio.ensure_future(background_process.coin_gecko())
+
+def on_shutdown():
+    coin_gecko = CoinGecko.object().first()
+    coin_gecko.loop_state = 'stopped'
+    coin_gecko.save()
+
+app = Starlette(debug=True, routes=routes, middleware=middleware, on_startup=[on_startup], on_shutdown=[on_shutdown])
+app.__dict__['mongo'] = CoinGecko.objects().first()
+print('started')
 
 if __name__ == '__main__':
     # init_db()

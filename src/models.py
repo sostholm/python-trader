@@ -4,16 +4,19 @@ from graphene       import String
 from graphene.relay import Node
 from graphene_mongo import MongoengineConnectionField, MongoengineObjectType
 from datetime       import datetime
-from mongoengine    import Document, EmbeddedDocument
+from mongoengine    import Document, EmbeddedDocument, connect
 from mongoengine    import (DateTimeField, FloatField, StringField, IntField,
 ReferenceField, ListField, EmbeddedDocumentListField, DictField, BinaryField)
 
 import aiohttp
 import json
+import os
 
 from coin_gecko_api import get_timestamp
 
 COIN_GECKO = 'https://api.coingecko.com/api/v3'
+
+connect('trader', host=f'mongodb://pine64:27017', username='root', password=os.environ["PASSWORD"], authentication_source='admin')
 
 async def fetch(url):
     async with aiohttp.ClientSession() as session:
@@ -63,31 +66,66 @@ class Position(EmbeddedDocument):
 class Exchange(Document):
     meta            = {'collection': 'exchanges'}
     name            = StringField()
-    exchange_api    = StringField()
-    loop_state      = StringField(default="stopped", choices=["start", "running", "stop","stopped"])
-    subscriptions   = ListField(StringField())
+
+# class CoinGeckoCoin(Document):
+#     id                              = StringField(),
+#     symbol                          = StringField(),
+#     name                            = StringField(),
+#     image                           = StringField(),
+#     current_price                   = FloatField(),
+#     market_cap                      = FloatField(),
+#     market_cap_rank                 = IntField(),
+#     fully_diluted_valuation         = IntField(),
+#     total_volume                    = IntField(),
+#     high_24h                        = FloatField(),
+#     low_24h                         = FloatField(),
+#     price_change_24h                = FloatField(),
+#     price_change_percentage_24h     = FloatField(),
+#     market_cap_change_24h           = IntField(),
+#     market_cap_change_percentage_24h= FloatField(),
+#     circulating_supply              = IntField(),
+#     total_supply                    = IntField(),
+#     max_supply                      = IntField(),
+#     ath                             = FloatField(),
+#     ath_change_percentage           = FloatField(),
+#     ath_date                        = DateTimeField(),
+#     atl                             = FloatField(),
+#     atl_change_percentage           = FloatField(),
+#     atl_date                        = DateTimeField(),
+#     roi                             = DictField(default={}),
+#     last_updated                    = DateTimeField()
+#     price_change_percentage_14d_in_currency     = FloatField(),
+#     price_change_percentage_1h_in_currency      = FloatField(),
+#     price_change_percentage_24h_in_currency     = FloatField(),
+#     price_change_percentage_30d_in_currency     = FloatField(),
+#     price_change_percentage_7d_in_currency      = FloatField()
 
 class CoinGecko(Document):
-    current_prices  = DictField(default={})
-    coin_list       = DictField(default={})
-    subscriptions   = ListField(StringField(), default=[])
-    loop_state      = StringField(default="stopped", choices=["start", "running", "stop","stopped"])
+    last_price_update   = DateTimeField()
+    # current_prices      = DictField(default={})
+    coin_list           = ListField(DictField())
+    subscriptions       = ListField(StringField(), default=[])
+    loop_state          = StringField(default="stopped", choices=["start", "running", "stop","stopped"])
 
 class Account(EmbeddedDocument):
     meta            = {'collection': 'accounts'}
     api_key         = StringField(required=True)
     secret          = StringField(required=True)
-    loop_state      = StringField(default="stopped", choices=["start", "running", "stop","stopped"])
     exchange        = ReferenceField(Exchange, required=True)
     subscriptions   = ListField(StringField())
     positions       = EmbeddedDocumentListField(Position)
     position_history= EmbeddedDocumentListField(Position)
 
+class WalletType(Document):
+    meta = {'collection': 'wallet_types'}
+    name = StringField()
+
 class Wallet(EmbeddedDocument):
     meta            = {'collection': 'wallets'}
+    name            = StringField()
     address         = StringField()
-    wallet_type     = StringField()
-    tokens          = DictField()
+    wallet_type     = ReferenceField(WalletType)
+    tokens          = ListField(StringField())
 
 class TotalValue(EmbeddedDocument):
     timestamp       = DateTimeField(required=True, default=lambda: datetime.now())
@@ -97,26 +135,27 @@ class User(Document):
     meta            = {'collection': 'users'}
     username        = StringField(required=True)
     password        = StringField(required=True)
-    portfolio       = DictField()
+    last_update     = DateTimeField()
+    portfolio       = ListField(default=[])
     total_value     = EmbeddedDocumentListField(TotalValue)
     subscription    = StringField()
+    loop_state      = StringField(default="stopped", choices=["start", "running", "stop","stopped"])
     accounts        = EmbeddedDocumentListField(Account)
     wallets         = EmbeddedDocumentListField(Wallet)
 
-class UserNode(MongoengineObjectType):
+class UserN(MongoengineObjectType):
     class Meta:
         model = User
         interfaces = (Node,)
 
 class AccountNode(MongoengineObjectType):
     class Meta:
-        model = Exchange
+        model = Account
         interfaces = (Node,)
 
 class ExchangeNode(MongoengineObjectType):
     class Meta:
         model = Exchange
-        interfaces = (Node,)
 
     instruments         = graphene.JSONString()
     exchange_tickers    = graphene.JSONString()
@@ -133,7 +172,11 @@ class ExchangeNode(MongoengineObjectType):
 class WalletNode(MongoengineObjectType):
     class Meta:
         model = Wallet
-        interfaces = (Node,)   
+        interfaces = (Node,) 
+
+class WalletTypeNode(MongoengineObjectType):
+    class Meta:
+        model = WalletType
 
 # class PositionNode(MongoengineObjectType):
 #     class Meta:
