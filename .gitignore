@@ -1,5 +1,6 @@
 .vscode/launch.json
 order.json
+.vscode
 .vscode/settings.json
 private_key.pem
 private_key.txt
@@ -9,3 +10,5 @@ ws_test.js
 src/starlette
 webpush.txt
 *.pyc
+__pycache__
+ws_test.js
