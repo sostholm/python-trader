@@ -33,8 +33,6 @@ import background_process
 
 # connect('trader', host=f'mongodb://pine64:27017', username='root', password=os.environ["PASSWORD"], authentication_source='admin')
 
-# mongodb://root:*****@pine64:27017
-
 # schema = graphene.Schema(query=Query, mutation=Mutation)
 
 # loop = asyncio.get_event_loop()
@@ -121,7 +119,7 @@ async def WS(websocket):
         #     result = schema.execute(msg['payload'], context={'user': user, 'app': app})
 
         if not result.data and result.errors:
-            await websocket.send_json({"id": msg['id'], "error": result.errors})
+            await websocket.send_json({"id": msg['id'], "error": result.errors[0]})
 
         await websocket.send_json({"id": msg['id'], "payload": result.data})
     await websocket.close()

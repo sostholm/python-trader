@@ -17,10 +17,9 @@ from bson import ObjectId
 from exchanges import Bittrex, Cdc, GateIO, Ethereum, Binance, Balance
 # from mutations import AddCoinGecko
 import time
-import motor.motor_asyncio
-
-api_key = os.environ['api_key']
-secret  = os.environ['secret']
+from web_push import send_web_push
+# api_key = os.environ['api_key']
+# secret  = os.environ['secret']
 
 # client = motor.motor_asyncio.AsyncIOMotorClient(f'mongodb://root:{os.environ["PASSWORD"]}@pine64:27017')
 
@@ -40,6 +39,7 @@ class Query(graphene.ObjectType):
     ethereum    = graphene.Field(Ethereum)
     coin_gecko  = graphene.Field(CoinGeckoNode)
     binance     = graphene.Field(Binance)
+    notify      = graphene.Field(graphene.String, args={'id': graphene.String(), 'text': graphene.String()})
     # orders = graphene.List(Order)
     # all_microbes = MongoengineConnectionField(Microbe)
     # all_Probiotics = MongoengineConnectionField(Probiotic)
@@ -85,10 +85,6 @@ class Query(graphene.ObjectType):
 
     def resolve_gateio(self, info):
         return GateIO()
-
-    # def resolve_exchange(self, info, id, name=""):
-    #     exchange = Exchange.objects(id=ObjectId(id)).first()
-    #     return exchange
     
     def resolve_ethereum(self, info):
         return Ethereum()
@@ -100,11 +96,13 @@ class Query(graphene.ObjectType):
     def resolve_binance(self, info):
         return Binance()
 
-    # def resolve_order(self, info, symbol, id):
-    #     order = api.get_order(sym=symbol, oid=id)
-    #     if order['code'] != '0':
-    #         raise Exception()
-    #     return order['data']['order_info']
+    def resolve_notify(self, info, id, text):
+        user = User.objects(id=ObjectId(id)).first()
+        if user.subscription:
+            send_web_push(user.subscription, text)
+            return 'Success'
+        else:
+            return 'No subscription'
 
 
 class Mutation(graphene.ObjectType):
@@ -116,6 +114,8 @@ class Mutation(graphene.ObjectType):
     add_wallet      = mutations.AddWallet.Field()
     add_token       = mutations.AddToken.Field()
     update_exchange = mutations.UpdateExchange.Field()
+    # update_user     = mutations.UpdateUser.Field()
+    add_subscription= mutations.AddSubscription.Field()
     add_exchange_subscription = mutations.AddSubscription.Field()
     add_bittrex_order = AddBittrexOrder.Field()
     # add_coin_gecko    = AddCoinGecko.Field()

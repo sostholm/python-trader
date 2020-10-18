@@ -190,16 +190,16 @@ class AddWalletType(graphene.Mutation):
         
 class UpdateUser(graphene.Mutation):
     class Arguments:
-        _id = graphene.String()
+        user_id     = graphene.String()
         password    = graphene.String()
         subscription= graphene.String()
         loop_state  = graphene.String()
 
-    user = graphene.Field(UserN)
+    user = graphene.Field(User)
 
     @staticmethod
     def mutate(root, info, **input):
-        user = User.objects(id=ObjectId(input['_id'])).first()
+        user = User.objects(id=ObjectId(input['user_id'])).first()
 
         if 'password' in input:
             user.password   = bcrypt.hashpw(input['password'], bcrypt.gensalt(12)).decode('utf-8')
@@ -274,23 +274,20 @@ class UpdateExchange(graphene.Mutation):
 
 class AddSubscription(graphene.Mutation):
     class Arguments:
-        _id     = graphene.String()
-        channel = graphene.String()
+        endpoint            = graphene.String()
+        expirationTime      = graphene.String()
+        p256dh              = graphene.String()
+        auth                = graphene.String()
 
-    exchange = graphene.Field(ExchangeNode)
+    stuff = graphene.Field(graphene.String)
 
     @staticmethod
     def mutate(root, info, **input):
-        exchange = Exchange.objects(id=ObjectId(input['_id'])).first()
-        exchange.subscriptions.append(input['channel'])
-        
-        if not CurrencyPair.objects(pair=input['channel']):
-            cp = CurrencyPair(pair=input['channel'])
-            exchange.currency_pairs.append(cp)
-            cp.save()
-        
-        exchange.save()
-        return AddSubscription(exchange=exchange)
+        sub = {"endpoint": input['endpoint'], "expirationTime": input['expirationTime'], "keys": {"p256dh": input['p256dh'], "auth": input['auth']}}
+        user = info.context['user']
+        user.subscription = sub
+        user.save()
+        return AddSubscription(stuff='worked')
 
 class RemoveSubscription(graphene.Mutation):
     class Arguments:

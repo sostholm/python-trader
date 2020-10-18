@@ -12,7 +12,7 @@ import logging
 import exchanges
 import sys
 
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+logging.basicConfig(stream=sys.stdout, level=logging.ERROR)
 log = logging.getLogger(f'meta_exchange')
 
 class Order(graphene.ObjectType):
@@ -58,6 +58,11 @@ class Balance(graphene.ObjectType):
     updated         = graphene.String()
     usd             = graphene.String()
     exchange        = graphene.String()
+    price_change_percentage_14d_in_currency     = graphene.String()
+    price_change_percentage_1h_in_currency      = graphene.String()
+    price_change_percentage_24h_in_currency     = graphene.String()
+    price_change_percentage_30d_in_currency     = graphene.String()
+    price_change_percentage_7d_in_currency      = graphene.String()
 
 class Ticker(graphene.ObjectType):
     name        = graphene.String()
@@ -115,10 +120,23 @@ def make_coins(context, balances, currency, total, available):
                 db_entry = entries[0]
                 if db_entry:
                         usd = float(coin_total) * db_entry['current_price']
+
                 else:
                     log.warning(f'{coins[currency]} not found in CoinGecko.coin_list!')
                 
-                balance.append(dict(currency=coins[currency], total=coin_total, available=coins[available], usd=usd))
+                all_fields = dict(
+                    currency                                    = coins[currency], 
+                    total                                       = coin_total, 
+                    available                                   = coins[available], 
+                    usd                                         = usd,
+                    price_change_percentage_14d_in_currency     = db_entry['price_change_percentage_14d_in_currency'],
+                    price_change_percentage_1h_in_currency      = db_entry['price_change_percentage_1h_in_currency'],
+                    price_change_percentage_24h_in_currency     = db_entry['price_change_percentage_24h_in_currency'],
+                    price_change_percentage_30d_in_currency     = db_entry['price_change_percentage_30d_in_currency'],
+                    price_change_percentage_7d_in_currency      = db_entry['price_change_percentage_7d_in_currency']
+                )
+
+                balance.append(all_fields)
 
     # if len(not_in_coin_gecko) > 0:
         # background = context["background"]

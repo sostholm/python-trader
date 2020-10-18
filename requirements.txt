@@ -8,3 +8,6 @@ starlette-jwt
 pyjwt
 aiohttp
 bcrypt
+web3
+cryptography
+motor

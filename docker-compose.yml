@@ -1,0 +1,25 @@
+version: "3.8"
+services:
+  ptrader:
+    image: ptrader
+    build: .
+    secrets:
+        - db_password
+        - cert
+        - key
+        - vapid_key_txt
+        - vapid_public_key_txt
+    ports:
+      - 8000:8000
+
+secrets:
+    db_password:
+        external: true
+    cert:
+        external: true
+    key:
+        external: true
+    vapid_key_txt:
+        external: true
+    vapid_public_key_txt:
+        external: true

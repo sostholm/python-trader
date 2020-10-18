@@ -1,5 +1,4 @@
 from bson                                   import ObjectId
-from cro_websockets_api                     import CryptoWebsocketAPI
 from starlette.concurrency                  import run_in_threadpool
 from graphql.execution.executors.asyncio    import AsyncioExecutor
 from schema                                 import schema
@@ -10,6 +9,8 @@ import aiohttp
 import asyncio
 import requests
 import time
+
+from web_push import send_web_push
 
 import logging
 import sys
@@ -91,6 +92,8 @@ def create_exchange_balance_query(exchange):
       total
       available
       usd
+      priceChangePercentage1hInCurrency
+      priceChangePercentage24hInCurrency 
     }
   } 
 '''
@@ -139,6 +142,56 @@ def background_user_sync(app, user):
                     
                     total_usd = sum([float(currency['usd']) for exchange in result.data.values() if exchange['balance'] for currency in exchange['balance']])
                     
+                    for currency in balance:
+                        
+                        if currency['priceChangePercentage1hInCurrency']:
+                            try:
+                                change = float(currency['priceChangePercentage1hInCurrency'])
+
+                                if change > 4.5 or change < -4.5:
+                                    if (
+                                            isinstance(user.events, list) and 
+                                            list(filter(lambda x: x['currency'] == currency['currency'] and x['date'] == datetime.now().strftime("%Y%m%d") and x['type'] == 'priceChangePercentage1hInCurrency', user.events))
+                                    ):
+                                        #If an entry for this event exists, skip
+                                        continue
+                                    
+                                    if user.subscription:
+                                        try:
+                                            send_web_push(user.subscription, f'{currency["currency"]} is up by {change} 1h')
+                                            event = {'currency': currency['currency'], 'date': datetime.now().strftime("%Y%m%d"), 'type': 'priceChangePercentage1hInCurrency'}
+                                            user.events.append(event)
+                                            log.info(f'event sent for {event}')
+                                        except Exception as e:
+                                            log.error(e)
+                            except TypeError as e:
+                                log.error(f'Unable to convert priceChangePercentage1hInCurrency for {currency["currency"]}')
+                        
+                        if currency['priceChangePercentage24hInCurrency']:
+                            try:
+                                change = float(currency['priceChangePercentage24hInCurrency'])
+
+                                if change > 4.5 or change < -4.5:
+                                    if (
+                                            isinstance(user.events, list) and 
+                                            list(filter(lambda x: x['currency'] == currency['currency'] and x['date'] == datetime.now().strftime("%Y%m%d") and x['type'] == 'priceChangePercentage24hInCurrency', user.events))
+                                    ):
+                                        #If an entry for this event exists, skip
+                                        continue
+                                    
+                                    if user.subscription:
+                                        try:
+                                            send_web_push(user.subscription, f'{currency["currency"]} is up by {change} 24h')
+                                            event = {'currency': currency['currency'], 'date': datetime.now().strftime("%Y%m%d"), 'type': 'priceChangePercentage24hInCurrency'}
+                                            user.events.append(event)
+                                            log.info(f'event sent for {event}')
+                                        except Exception as e:
+                                            log.error(e)
+
+                            except TypeError as e:
+                                log.error(f'Unable to convert priceChangePercentage24hInCurrency for {currency["currency"]}')
+
+
                     user.total_value.append(models.TotalValue(usd_value=total_usd))
                     user.last_update = datetime.now()
                     user.save()

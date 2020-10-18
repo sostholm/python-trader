@@ -53,6 +53,9 @@ class GateIO(graphene.ObjectType):
 
         response = await gen_request('/spot/accounts', 'get', api_secret, api_key)
 
+        if 'label' in response and response['label'] == 'INVALID_KEY':
+            raise Exception('Invalid key provided')
+
         coins = make_coins(info.context, response, 'currency', 'available_locked', 'available')
         toc = time.perf_counter()
         print(f'gateio, balance: {round(toc-tic, 2)}s')

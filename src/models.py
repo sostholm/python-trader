@@ -1,3 +1,4 @@
+from asyncio import events
 from os import name
 import graphene
 from graphene       import String
@@ -12,11 +13,19 @@ import aiohttp
 import json
 import os
 
-from coin_gecko_api import get_timestamp
 
 COIN_GECKO = 'https://api.coingecko.com/api/v3'
 
-connect('trader', host=f'mongodb://pine64:27017', username='root', password=os.environ["PASSWORD"], authentication_source='admin')
+PASSWORD = None
+
+if 'PASSWORD' in os.environ:
+    PASSWORD = os.environ["PASSWORD"]
+else:
+    with open('/run/secrets/db_password', 'r') as file:
+        PASSWORD = file.read().replace('\n', '')
+
+
+connect('trader', host=f'mongodb://pine64:27017', username='root', password=PASSWORD, authentication_source='admin')
 
 async def fetch(url):
     async with aiohttp.ClientSession() as session:
@@ -138,10 +147,11 @@ class User(Document):
     last_update     = DateTimeField()
     portfolio       = ListField(default=[])
     total_value     = EmbeddedDocumentListField(TotalValue)
-    subscription    = StringField()
+    subscription    = DictField()
     loop_state      = StringField(default="stopped", choices=["start", "running", "stop","stopped"])
     accounts        = EmbeddedDocumentListField(Account)
     wallets         = EmbeddedDocumentListField(Wallet)
+    events          = ListField(default=[])
 
 class UserN(MongoengineObjectType):
     class Meta:
