@@ -22,8 +22,11 @@ import bcrypt
 import asyncio
 import os
 import time
-from models         import User, Exchange, CoinGecko
-from schema         import Query, Mutation
+from models         import User
+from database       import get_client
+
+from schema         import Query
+# , Mutation
 from encrypt        import password_decrypt
 from bson           import ObjectId
 # from database import init_db
@@ -57,32 +60,33 @@ async def login(request):
     return JSONResponse(response)
 
 
-async def authenticate(msg):
+async def authenticate(msg, client):
 
-    user = User.objects(username=msg['username']).first()
+    
+    user = await client.user_collection.find_one({'username': msg['username']})
 
     if not user:
         raise Exception('User not found')
     
-    if not bcrypt.checkpw(msg['password'].encode(), user.password.encode()):
+    if not bcrypt.checkpw(msg['password'].encode(), user['password'].encode()):
         raise Exception('Wrong Username/Password')
 
     user.__dict__['password_decrypted'] = msg['password']
     user.__dict__['exchanges'] = {}
-    for account in user.accounts:
+    for account in user['accounts']:
         user.__dict__['exchanges'][account.exchange.name] = {
             'api_key': password_decrypt(account.api_key.encode('utf-8'), msg['password']).decode('utf-8'),
             'api_secret': password_decrypt(account.secret.encode('utf-8'), msg['password']).decode('utf-8')
         }
 
     user.__dict__['wallets'] = {}
-    for wallet in user.wallets:
+    for wallet in user['wallets']:
         user.__dict__['wallets'][wallet.wallet_type] = {
             'address': wallet.address,
             'tokens': wallet.tokens
         }
 
-    if user.loop_state != 'running':
+    if user['loop_state'] != 'running':
         asyncio.create_task(run_in_threadpool(background_process.background_user_sync, app, user))
 
     return user
@@ -92,6 +96,7 @@ async def WS(websocket):
 
     msg             = ''
     user            = None
+    client = get_client(asyncio.get_running_loop())
 
     while msg != 'close':
         try:
@@ -104,7 +109,7 @@ async def WS(websocket):
 
         if not user:
             try:
-                user = await authenticate(msg['payload'])
+                user = await authenticate(msg['payload'], client)
                 await websocket.send_json({"id": msg['id'], "payload":"success"})
                 continue
             except Exception as e:
@@ -112,9 +117,8 @@ async def WS(websocket):
                 await websocket.close()
 
         print(f'received: {msg}')
-        app.mongo.reload()
         # if msg['payload'].lower().startswith('query') or msg['payload'].lower().startswith('\nquery'):
-        result = await schema.execute(msg['payload'], executor=AsyncioExecutor(loop=asyncio.get_running_loop()), return_promise=True, context={'user': user, 'app': app})
+        result = await schema.execute(msg['payload'], executor=AsyncioExecutor(loop=asyncio.get_running_loop()), return_promise=True, context={'user': user, 'client': client})
         # else:
         #     result = schema.execute(msg['payload'], context={'user': user, 'app': app})
 
@@ -155,24 +159,26 @@ middleware = [
 ]
 
 def on_startup():
-    coin_gecko = CoinGecko.objects().first()
-    if coin_gecko.loop_state != 'running':
-        coin_gecko.loop_state = 'running'
-        coin_gecko.save()
+    app.__dict__['mongo'] = get_client(asyncio.get_running_loop())
+    # coin_gecko = CoinGecko.objects().first()
+    # if coin_gecko.loop_state != 'running':
+    #     coin_gecko.loop_state = 'running'
+    #     coin_gecko.save()
     
-    for user in User.objects():
-        user.loop_state = 'stopped'
-        user.save()
+    # for user in User.objects():
+    #     user.loop_state = 'stopped'
+    #     user.save()
 
     asyncio.ensure_future(background_process.coin_gecko())
 
 def on_shutdown():
-    coin_gecko = CoinGecko.object().first()
-    coin_gecko.loop_state = 'stopped'
-    coin_gecko.save()
+    pass
+    # coin_gecko = CoinGecko.object().first()
+    # coin_gecko.loop_state = 'stopped'
+    # coin_gecko.save()
 
 app = Starlette(debug=True, routes=routes, middleware=middleware, on_startup=[on_startup], on_shutdown=[on_shutdown])
-app.__dict__['mongo'] = CoinGecko.objects().first()
+# app.__dict__['mongo'] = get_client(asyncio.get_running_loop())
 print('started')
 
 if __name__ == '__main__':

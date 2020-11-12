@@ -93,12 +93,14 @@ async def coin_gecko_thread(coin_gecko, not_in_coin_gecko):
 
 def make_coins(context, balances, currency, total, available):
     if 'request' in context:
-        coin_gecko = context['request'].app.mongo
+        coin_gecko = context['request'].app.mongo.coin_gecko
     else:
-        coin_gecko = context['app'].mongo
+        coin_gecko = context['client'].coin_gecko
 
     balance = []
     not_in_coin_gecko = []
+
+    entries = 
 
     for coins in balances:
         coin_total = 0

@@ -1,6 +1,7 @@
 from os import name
 import graphene
-from models import UserN, ExchangeNode, User, Position, Exchange, Account, AccountNode, CoinGecko, CoinGeckoNode, Wallet, WalletNode, WalletType, WalletTypeNode
+# UserN, ExchangeNode, AccountNode, WalletNode, WalletTypeNode
+from models import User, Position, Exchange, Account, CoinGecko, CoinGeckoNode, Wallet, WalletType
 from encrypt import password_encrypt, password_decrypt
 import json
 import bcrypt

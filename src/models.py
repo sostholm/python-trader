@@ -1,18 +1,22 @@
-from asyncio import events
-from os import name
-import graphene
-from graphene       import String
-from graphene.relay import Node
-from graphene_mongo import MongoengineConnectionField, MongoengineObjectType
-from datetime       import datetime
-from mongoengine    import Document, EmbeddedDocument, connect
-from mongoengine    import (DateTimeField, FloatField, StringField, IntField,
-ReferenceField, ListField, EmbeddedDocumentListField, DictField, BinaryField)
-
-import aiohttp
 import json
 import os
+from asyncio import events
+from datetime import date, datetime
+from os import name
 
+import aiohttp
+import graphene
+from graphene import DateTime, Field, JSONString, List, ObjectType, String, Int, Float, Enum
+from graphene.relay import Node
+from graphene_mongo import MongoengineConnectionField, MongoengineObjectType
+from mongoengine import (BinaryField, DateTimeField, DictField, Document,
+                         EmbeddedDocument, EmbeddedDocumentListField,
+                         FloatField, IntField, ListField, ReferenceField,
+                         StringField, connect)
+
+import motor.motor_asyncio
+
+# from exchanges import Balance
 
 COIN_GECKO = 'https://api.coingecko.com/api/v3'
 
@@ -26,6 +30,7 @@ else:
 
 
 connect('trader', host=f'mongodb://pine64:27017', username='root', password=PASSWORD, authentication_source='admin')
+client = motor.motor_asyncio.AsyncIOMotorClient()
 
 async def fetch(url):
     async with aiohttp.ClientSession() as session:
@@ -64,17 +69,17 @@ async def fetch(url):
 #     status      = graphene.Int()
 #     all_details = graphene.JSONString()
 
-class Position(EmbeddedDocument):
+class Position(ObjectType):
     # currency_pair   = ReferenceField('CurrencyPair')
-    held_currency   = StringField()
-    amount          = FloatField()
-    date            = DateTimeField()
-    type            = StringField()
-    full_info       = DictField()
+    held_currency   = String()
+    amount          = Float()
+    date            = DateTime()
+    type            = String()
+    full_info       = JSONString()
 
-class Exchange(Document):
-    meta            = {'collection': 'exchanges'}
-    name            = StringField()
+class Exchange(ObjectType):
+    # meta            = {'collection': 'exchanges'}
+    name            = String()
 
 # class CoinGeckoCoin(Document):
 #     id                              = StringField(),
@@ -108,85 +113,107 @@ class Exchange(Document):
 #     price_change_percentage_24h_in_currency     = FloatField(),
 #     price_change_percentage_30d_in_currency     = FloatField(),
 #     price_change_percentage_7d_in_currency      = FloatField()
+class State(Enum):
+    start   = 1
+    running = 2
+    stop    = 3
+    stopped = 4
 
-class CoinGecko(Document):
-    last_price_update   = DateTimeField()
+class CoinGecko(ObjectType):
+    last_price_update   = DateTime()
     # current_prices      = DictField(default={})
-    coin_list           = ListField(DictField())
-    subscriptions       = ListField(StringField(), default=[])
-    loop_state          = StringField(default="stopped", choices=["start", "running", "stop","stopped"])
+    coin_list           = List(JSONString)
+    subscriptions       = List(String)
+    loop_state          = Field(State)
 
-class Account(EmbeddedDocument):
-    meta            = {'collection': 'accounts'}
-    api_key         = StringField(required=True)
-    secret          = StringField(required=True)
-    exchange        = ReferenceField(Exchange, required=True)
-    subscriptions   = ListField(StringField())
-    positions       = EmbeddedDocumentListField(Position)
-    position_history= EmbeddedDocumentListField(Position)
+class Account(ObjectType):
+    api_key         = String()
+    secret          = String()
+    exchange        = Field(Exchange)
+    subscriptions   = List(String)
+    positions       = List(Position)
+    position_history= List(Position)
 
-class WalletType(Document):
-    meta = {'collection': 'wallet_types'}
-    name = StringField()
+class WalletType(ObjectType):
+    # meta = {'collection': 'wallet_types'}
+    name = String()
 
-class Wallet(EmbeddedDocument):
-    meta            = {'collection': 'wallets'}
-    name            = StringField()
-    address         = StringField()
-    wallet_type     = ReferenceField(WalletType)
-    tokens          = ListField(StringField())
+class Wallet(ObjectType):
+    # meta            = {'collection': 'wallets'}
+    name            = String()
+    address         = String()
+    wallet_type     = Field(WalletType)
+    tokens          = List(String)
 
-class TotalValue(EmbeddedDocument):
-    timestamp       = DateTimeField(required=True, default=lambda: datetime.now())
-    usd_value       = IntField()
+class Event(ObjectType):
+    currency = String()
+    date     = String()
+    type     = String()
 
-class User(Document):
-    meta            = {'collection': 'users'}
-    username        = StringField(required=True)
-    password        = StringField(required=True)
-    last_update     = DateTimeField()
-    portfolio       = ListField(default=[])
-    total_value     = EmbeddedDocumentListField(TotalValue)
-    subscription    = DictField()
-    loop_state      = StringField(default="stopped", choices=["start", "running", "stop","stopped"])
-    accounts        = EmbeddedDocumentListField(Account)
-    wallets         = EmbeddedDocumentListField(Wallet)
-    events          = ListField(default=[])
+class UserBalance(ObjectType):
+    currency                            = String()
+    total                               = Float()
+    available                           = Float()
+    usd                                 = Float()
+    priceChangePercentage1hInCurrency   = Float()
+    priceChangePercentage24hInCurrency  = Float()
+    exchange                            = String()
 
-class UserN(MongoengineObjectType):
-    class Meta:
-        model = User
-        interfaces = (Node,)
+class User(ObjectType):
+    # meta            = {'collection': 'users'}
+    username        = String()
+    password        = String()
+    last_update     = DateTime()
+    portfolio       = List(UserBalance)
+    subscription    = JSONString()
+    loop_state      = String()
+    accounts        = List(Account)
+    wallets         = List(Wallet)
+    events          = List(Event)
 
-class AccountNode(MongoengineObjectType):
-    class Meta:
-        model = Account
-        interfaces = (Node,)
+# class TotalValue(ObjectType):
+#     timestamp       = DateTime()
+#     usd_value       = Int()
 
-class ExchangeNode(MongoengineObjectType):
-    class Meta:
-        model = Exchange
+# class ValueHistory(ObjectType):
+#     # meta            = {'collection': 'value_history'}
+#     user            = String()
+#     total_value     = List(Field(TotalValue))
 
-    instruments         = graphene.JSONString()
-    exchange_tickers    = graphene.JSONString()
-    coins               = graphene.JSONString()
-    coin_ticker         = graphene.JSONString()
+# class UserN(MongoengineObjectType):
+#     class Meta:
+#         model = User
+#         interfaces = (Node,)
 
-    async def resolve_exchange_tickers(self, info):
-        return fetch(f'https://api.coingecko.com/api/v3/exchanges/{self.name.lower()}/tickers')
+# class AccountNode(MongoengineObjectType):
+#     class Meta:
+#         model = Account
+#         interfaces = (Node,)
 
-    async def resolve_instruments(self, info):
-        if self.instruments_url:
-            return fetch(self.instruments_url)
+# class ExchangeNode(MongoengineObjectType):
+#     class Meta:
+#         model = Exchange
 
-class WalletNode(MongoengineObjectType):
-    class Meta:
-        model = Wallet
-        interfaces = (Node,) 
+#     instruments         = graphene.JSONString()
+#     exchange_tickers    = graphene.JSONString()
+#     coins               = graphene.JSONString()
+#     coin_ticker         = graphene.JSONString()
 
-class WalletTypeNode(MongoengineObjectType):
-    class Meta:
-        model = WalletType
+#     async def resolve_exchange_tickers(self, info):
+#         return fetch(f'https://api.coingecko.com/api/v3/exchanges/{self.name.lower()}/tickers')
+
+#     async def resolve_instruments(self, info):
+#         if self.instruments_url:
+#             return fetch(self.instruments_url)
+
+# class WalletNode(MongoengineObjectType):
+#     class Meta:
+#         model = Wallet
+#         interfaces = (Node,) 
+
+# class WalletTypeNode(MongoengineObjectType):
+#     class Meta:
+#         model = WalletType
 
 # class PositionNode(MongoengineObjectType):
 #     class Meta:
@@ -198,10 +225,10 @@ class WalletTypeNode(MongoengineObjectType):
 #         model = Order1
 #         interfaces = (Node,)
 
-class CoinGeckoNode(MongoengineObjectType):
-    class Meta:
-        model = CoinGecko
-        interfaces = (Node,)
+# class CoinGeckoNode(MongoengineObjectType):
+#     class Meta:
+#         model = CoinGecko
+#         interfaces = (Node,)
 
     
 
