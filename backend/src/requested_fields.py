@@ -19,7 +19,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 from graphql.utils.ast_to_dict import ast_to_dict
-
+import re
 
 def collect_fields(node, fragments):
     """Recursively collects fields from the AST
@@ -75,8 +75,24 @@ def replace_empty(fields):
         else:
             replace_empty(fields[key])
 
+def process_to_lower_with_underscore(fields):
+    new_fields = {}
+    for key in fields.keys():
+        new_key = re.sub('([A-Z]{1})', r'_\1', key).lower()
 
-def get_projection(info):
+        if fields[key] == {}:
+            new_fields[new_key] = True
+
+        else:
+            new_fields[new_key] = process_to_lower_with_underscore(fields[key])
+    
+    return new_fields
+
+def get_projection(info, to_lower_with_underscore=False):
     fields = get_fields(info)
-    replace_empty(fields)
+    
+    if to_lower_with_underscore:
+        fields = process_to_lower_with_underscore(fields)
+    else:
+        replace_empty(fields)
     return fields

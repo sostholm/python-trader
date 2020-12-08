@@ -1,7 +1,7 @@
 from os import name
 import graphene
 # UserN, ExchangeNode, AccountNode, WalletNode, WalletTypeNode
-from models import User, Position, Exchange, Account, CoinGecko, CoinGeckoNode, Wallet, WalletType
+from models import User, Position, Exchange, Account, CoinGecko, Wallet, WalletType
 from encrypt import password_encrypt, password_decrypt
 import json
 import bcrypt
@@ -14,20 +14,20 @@ class AddUser(graphene.Mutation):
     class Input:
         username    = graphene.String(required=True)
         password    = graphene.String(required=True)
-    user = graphene.Field(UserN)
+    user = graphene.Field(User)
 
     @staticmethod
-    def mutate(root, info, **input):
-        bl = User(
+    async def mutate(root, info, **input):
+        user = dict(
             username    = input['username'],
             password    = bcrypt.hashpw(input['password'].encode(), bcrypt.gensalt(12)).decode('utf-8'),
         )
-        bl.save()
-        return AddUser(user=bl)
+        await info.context['client'].trader.users.insert_one(user)
+        return AddUser(user=user)
 
 class AddCoinGecko(graphene.Mutation):
     
-    coin_gecko = graphene.Field(CoinGeckoNode)
+    coin_gecko = graphene.Field(CoinGecko)
     @staticmethod
     def mutate(root, info, **input):
         cg = CoinGecko()
@@ -39,21 +39,21 @@ class AddAccount(graphene.Mutation):
         exchange_id     = graphene.String(required=True)
         api_key         = graphene.String(required=True)
         secret          = graphene.String(required=True)
+        password        = graphene.String(required=True)
 
-    account = graphene.Field(AccountNode)
+    account = graphene.Field(Account)
 
     @staticmethod
-    def mutate(root, info, **input):
-        user = info.context['user']
-        user.accounts.append(
-            Account(
-                exchange    = Exchange.objects(id=ObjectId(input['exchange_id'])).first(),
-                api_key     = password_encrypt(message=input['api_key'].encode('utf-8'), password=user.password_decrypted).decode('utf-8'),
-                secret      = password_encrypt(message=input['secret'].encode('utf-8'), password=user.password_decrypted).decode('utf-8')
-            )
+    async def mutate(root, info, **input):
+        id = info.context['request'].user.display_name
+        exchange = await info.context['client'].trader.exchanges.find_one({'_id': input['exchange_id']})
+        account =  dict(
+            exchange    = exchange['_id'],
+            api_key     = password_encrypt(message=input['api_key'].encode('utf-8'), password=input['password']).decode('utf-8'),
+            secret      = password_encrypt(message=input['secret'].encode('utf-8'), password=input['password']).decode('utf-8')
         )
-        user.save()
-        return AddAccount(account=user.accounts[-1])
+        await info.context['client'].trader.users.update_one({'_id': ObjectId(id)}, {'$push': {'account': account}})
+        return AddAccount(account=account)
 
 class AddWallet(graphene.Mutation):
     class Input:
@@ -61,20 +61,21 @@ class AddWallet(graphene.Mutation):
         address         = graphene.String(required=True)
         wallet_type     = graphene.String(required=True)
 
-    wallet = graphene.Field(WalletNode)
+    wallet = graphene.Field(Wallet)
 
     @staticmethod
-    def mutate(root, info, **input):
-        user = info.context['user']
-        user.wallets.append(
-            Wallet(
-                name        = input['name'],
-                address     = input['address'],
-                wallet_type = WalletType.objects(id=ObjectId(input['wallet_type'])).first()
-            )
+    async def mutate(root, info, **input):
+        id = info.context['request'].user.display_name
+        
+        wallet_type = await info.context['client'].trader.wallet_types.find_one({'_id': input['wallet_type']})
+        wallet = dict(
+            name        = input['name'],
+            address     = input['address'],
+            wallet_type = ObjectId(wallet_type['_id'])
         )
-        user.save()
-        return AddWallet(wallet=user.wallets[-1])
+        
+        await info.context['client'].trader.users.update_one({'_id': ObjectId(id)}, {'$push': {'wallet': wallet}})
+        return AddWallet(wallet=wallet)
 
 class AddToken(graphene.Mutation):
     class Input:
@@ -84,11 +85,10 @@ class AddToken(graphene.Mutation):
     token = graphene.Field(graphene.String)
 
     @staticmethod
-    def mutate(root, info, **input):
-        user = info.context['user']
-        wallet = list(filter(lambda wallet: wallet.name == input['wallet_name'] , user.wallets))[0]
-        wallet.tokens.append(input['token'])
-        user.save()
+    async def mutate(root, info, **input):
+        id = info.context['request'].user.display_name
+        
+        await info.context['client'].trader.users.update_one({'_id': ObjectId(id), 'wallets.name': input['wallet_name']}, {'$push': {'tokens': input['token']}})
         return AddToken(token=input['token'])
 
 class AddPosition(graphene.Mutation):
@@ -159,118 +159,115 @@ class AddPosition(graphene.Mutation):
 
 #         return AddOrder(order=pb)
 
-class AddExchange(graphene.Mutation):
-    class Arguments:
-        name = graphene.String()
+# class AddExchange(graphene.Mutation):
+#     class Arguments:
+#         name = graphene.String()
 
-    exchange = graphene.Field(ExchangeNode)
+#     exchange = graphene.Field(Exchange)
 
-    @staticmethod
-    def mutate(root, info, **input):
-        obj = Exchange(
-            name = input['name'],
-        )
-        obj.save()
+#     @staticmethod
+#     async def mutate(root, info, **input):
+#         await info.context['client'].trader.users.insert_one({'name': input['name']})
 
-        return AddExchange(exchange=obj)
+#         return AddExchange(exchange={'name': input['name']})
 
-class AddWalletType(graphene.Mutation):
-    class Arguments:
-        name = graphene.String()
+# class AddWalletType(graphene.Mutation):
+#     class Arguments:
+#         name = graphene.String()
 
-    wallet_type = graphene.Field(WalletTypeNode)
+#     wallet_type = graphene.Field(WalletTypeNode)
 
-    @staticmethod
-    def mutate(root, info, **input):
-        obj = WalletType(
-            name = input['name'],
-        )
-        obj.save()
+#     @staticmethod
+#     def mutate(root, info, **input):
+#         obj = WalletType(
+#             name = input['name'],
+#         )
+#         obj.save()
 
-        return AddWalletType(wallet_type=obj)
+#         return AddWalletType(wallet_type=obj)
         
-class UpdateUser(graphene.Mutation):
-    class Arguments:
-        user_id     = graphene.String()
-        password    = graphene.String()
-        subscription= graphene.String()
-        loop_state  = graphene.String()
+# class UpdateUser(graphene.Mutation):
+#     class Arguments:
+#         user_id     = graphene.String()
+#         password    = graphene.String()
+#         subscription= graphene.String()
+#         loop_state  = graphene.String()
 
-    user = graphene.Field(User)
+#     user = graphene.Field(User)
 
-    @staticmethod
-    def mutate(root, info, **input):
-        user = User.objects(id=ObjectId(input['user_id'])).first()
+#     @staticmethod
+#     def mutate(root, info, **input):
+#         id = info.context['request'].user.display_name
 
-        if 'password' in input:
-            user.password   = bcrypt.hashpw(input['password'], bcrypt.gensalt(12)).decode('utf-8')
-        if 'subscription' in input:
-            user.subscription = json.dumps(input['subscription'])
-        if 'loop_state' in input:
+#         if 'password' in input:
+#             user.password   = bcrypt.hashpw(input['password'], bcrypt.gensalt(12)).decode('utf-8')
+#         if 'subscription' in input:
+#             user.subscription = json.dumps(input['subscription'])
+#         if 'loop_state' in input:
 
-            if input['loop_state'] == 'stop':
-                user.loop_state = 'stop'
+#             if input['loop_state'] == 'stop':
+#                 user.loop_state = 'stop'
 
-            else:
-                raise Exception(f"Exchange loop state is:{user.loop_state}, {input['loop_state']} not allowed")
+#             else:
+#                 raise Exception(f"Exchange loop state is:{user.loop_state}, {input['loop_state']} not allowed")
 
-        user.save()
-        return UpdateUser(user=user)
 
-class UpdateCoinGecko(graphene.Mutation):
-    class Arguments:
-        loop_state = graphene.String()
+#         return UpdateUser(user=user)
+
+# class UpdateCoinGecko(graphene.Mutation):
+#     class Arguments:
+#         loop_state = graphene.String()
     
-    coin_gecko = graphene.Field(CoinGeckoNode)
+#     coin_gecko = graphene.Field(CoinGeckoNode)
 
-    @staticmethod
-    def mutate(root, info, **input):
-        coin_gecko = CoinGecko.objects().first()
-        if 'loop_state' in input:
+#     @staticmethod
+#     def mutate(root, info, **input):
+#         coin_gecko = CoinGecko.objects().first()
+#         if 'loop_state' in input:
 
-            if input['loop_state'] in ['stop', 'stopped']:
-                coin_gecko.loop_state = input['loop_state']
+#             if input['loop_state'] in ['stop', 'stopped']:
+#                 coin_gecko.loop_state = input['loop_state']
 
-            else:
-                raise Exception(f"Exchange loop state is:{coin_gecko.loop_state}, {input['loop_state']} not allowed")
+#             else:
+#                 raise Exception(f"Exchange loop state is:{coin_gecko.loop_state}, {input['loop_state']} not allowed")
 
-            coin_gecko.loop_state = input['loop_state']
-            coin_gecko.save()
+#             coin_gecko.loop_state = input['loop_state']
+#             coin_gecko.save()
 
-        return UpdateCoinGecko(coin_gecko=coin_gecko)
+#         return UpdateCoinGecko(coin_gecko=coin_gecko)
 
-class UpdateExchange(graphene.Mutation):
-    class Arguments:
-        _id = graphene.String()
-        name            = graphene.String()
-        exchange_api    = graphene.String()
-        instruments_url = graphene.String()
-        loop_state      = graphene.String()
+# class UpdateExchange(graphene.Mutation):
+#     class Arguments:
+#         _id = graphene.String()
+#         name            = graphene.String()
+#         exchange_api    = graphene.String()
+#         instruments_url = graphene.String()
+#         loop_state      = graphene.String()
 
-    exchange = graphene.Field(ExchangeNode)
+#     exchange = graphene.Field(ExchangeNode)
 
-    @staticmethod
-    def mutate(root, info, **input):
-        exchange = Exchange.objects(id=ObjectId(input['_id'])).first()
+#     @staticmethod
+#     def mutate(root, info, **input):
+#         exchange = Exchange.objects(id=ObjectId(input['_id'])).first()
 
-        if 'name' in input:
-            exchange.name = input['name']
-        if 'exchange_api' in input:
-            exchange.exchange_api = input['exchange_api']
-        if 'instruments_url' in input:
-            exchange.instruments_url = input['instruments_url']
-        if 'loop_state' in input:
+#         if 'name' in input:
+#             exchange.name = input['name']
+#         if 'exchange_api' in input:
+#             exchange.exchange_api = input['exchange_api']
+#         if 'instruments_url' in input:
+#             exchange.instruments_url = input['instruments_url']
+#         if 'loop_state' in input:
 
-            if input['loop_state'] in ['stop', 'stopped']:
-                exchange.loop_state = input['loop_state']
+#             if input['loop_state'] in ['stop', 'stopped']:
+#                 exchange.loop_state = input['loop_state']
 
-            else:
-                raise f"Exchange loop state is:{exchange.loop_state}, {input['loop_state']} not allowed"
+#             else:
+#                 raise f"Exchange loop state is:{exchange.loop_state}, {input['loop_state']} not allowed"
 
-            exchange.loop_state = input['loop_state']
+#             exchange.loop_state = input['loop_state']
 
-        exchange.save()
-        return UpdateExchange(exchange=exchange)
+#         exchange.save()
+#         return UpdateExchange(exchange=exchange)
 
 
 class AddSubscription(graphene.Mutation):
@@ -283,23 +280,24 @@ class AddSubscription(graphene.Mutation):
     stuff = graphene.Field(graphene.String)
 
     @staticmethod
-    def mutate(root, info, **input):
+    async def mutate(root, info, **input):
+        id = info.context['request'].user.display_name
+
         sub = {"endpoint": input['endpoint'], "expirationTime": input['expirationTime'], "keys": {"p256dh": input['p256dh'], "auth": input['auth']}}
-        user = info.context['user']
-        user.subscription = sub
-        user.save()
+        
+        await info.context['client'].trader.users.update_one({'_id': ObjectId(id)}, {'$set': {'subscription': sub}})
         return AddSubscription(stuff='worked')
 
-class RemoveSubscription(graphene.Mutation):
-    class Arguments:
-        _id     = graphene.String()
-        channel = graphene.String()
+# class RemoveSubscription(graphene.Mutation):
+#     class Arguments:
+#         _id     = graphene.String()
+#         channel = graphene.String()
 
-    exchange = graphene.Field(ExchangeNode)
+#     exchange = graphene.Field(ExchangeNode)
 
-    @staticmethod
-    def mutate(root, info, **input):
-        exchange = Exchange.objects(id=ObjectId(input['_id'])).first()
-        exchange.subscriptions.append(input['channel'])
-        exchange.save()
-        return AddSubscription(exchange=exchange)
+#     @staticmethod
+#     def mutate(root, info, **input):
+#         exchange = Exchange.objects(id=ObjectId(input['_id'])).first()
+#         exchange.subscriptions.append(input['channel'])
+#         exchange.save()
+#         return AddSubscription(exchange=exchange)

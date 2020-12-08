@@ -13,7 +13,7 @@ from models import Exchange, WalletType, User, CoinGecko
 from exchanges import AddBittrexOrder
 # from mutations import AddUser, AddPosition, AddOrder
 from starlette.authentication import requires
-# import mutations
+import mutations
 from bson import ObjectId
 from exchanges import Bittrex, Cdc, GateIO, Ethereum, Binance, Balance
 # from mutations import AddCoinGecko
@@ -61,7 +61,7 @@ class Query(graphene.ObjectType):
             id = info.context['request'].user.display_name
         else:
             id = info.context['user']['_id']
-        fields = get_projection(info)
+        fields = get_projection(info, True)
 
         if 'request' in info.context:
             client = info.context['request'].app.mongo
@@ -71,14 +71,14 @@ class Query(graphene.ObjectType):
         return user
 
     async def resolve_exchanges(self, info):
-        fields = get_projection(info)
+        fields = get_projection(info, True)
         result = []
         async for document in info.context['request'].app.mongo.trader.exchanges.find({}, fields):
             result.append(document)
         return result
 
     async def resolve_wallet_types(self, info):
-        fields = get_projection(info)
+        fields = get_projection(info, True)
         result = []
         async for document in info.context['request'].app.mongo.trader.wallet_types.find({}, fields):
             result.append(document)
@@ -97,7 +97,7 @@ class Query(graphene.ObjectType):
         return Ethereum()
 
     async def resolve_coin_gecko(self, info):
-        fields = get_projection(info)
+        fields = get_projection(info, True)
         coin_gecko = await info.context['request'].app.mongo.trader.coin_gecko.find_one({}, fields)
         return coin_gecko
 
@@ -107,7 +107,7 @@ class Query(graphene.ObjectType):
     async def resolve_notify(self, info, id, text):
         if id == '':
             id = info.context['user'].id
-        fields = get_projection(info)
+        fields = get_projection(info, True)
         user = await info.context['request'].app.mongo.trader.users.find_one({'_id': ObjectId(id)}, fields)
         if user['subscription']:
             send_web_push(user['subscription'], text)
@@ -116,24 +116,25 @@ class Query(graphene.ObjectType):
             return 'No subscription'
 
 
-# class Mutation(graphene.ObjectType):
+class Mutation(graphene.ObjectType):
+    # add_exchange    = mutations.AddExchange.Field()
+    # add_wallet_type = mutations.AddWalletType.Field()
+    add_account     = mutations.AddAccount.Field()
+    add_wallet      = mutations.AddWallet.Field()
+    add_token       = mutations.AddToken.Field()
+    add_subscription= mutations.AddSubscription.Field()
+    # add_user        = mutations.AddUser.Field()
 
-#     # add_user        = mutations.AddUser.Field()
-#     add_exchange    = mutations.AddExchange.Field()
-#     add_wallet_type = mutations.AddWalletType.Field()
-#     add_account     = mutations.AddAccount.Field()
-#     add_wallet      = mutations.AddWallet.Field()
-#     add_token       = mutations.AddToken.Field()
-#     update_exchange = mutations.UpdateExchange.Field()
-#     # update_user     = mutations.UpdateUser.Field()
-#     add_subscription= mutations.AddSubscription.Field()
-#     add_exchange_subscription = mutations.AddSubscription.Field()
-#     add_bittrex_order = AddBittrexOrder.Field()
-#     # add_coin_gecko    = AddCoinGecko.Field()
-#     update_coin_gecko = mutations.UpdateCoinGecko.Field()
-#     # remove_exchange_subscription = mutations.RemoveSubscription.Field()
-#         # add_position    = AddPosition.Field()
-#         # add_order       = AddOrder.Field()
+    # update_exchange = mutations.UpdateExchange.Field()
+    # update_user     = mutations.UpdateUser.Field()
+    
+    # add_exchange_subscription = mutations.AddSubscription.Field()
+    # add_bittrex_order = AddBittrexOrder.Field()
+    # add_coin_gecko    = AddCoinGecko.Field()
+    # update_coin_gecko = mutations.UpdateCoinGecko.Field()
+    # remove_exchange_subscription = mutations.RemoveSubscription.Field()
+        # add_position    = AddPosition.Field()
+        # add_order       = AddOrder.Field()
 
 class TimerMiddleware:
     def resolve(self, next, root, info, **args):

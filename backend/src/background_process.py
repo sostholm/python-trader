@@ -11,7 +11,8 @@ import asyncio
 import requests
 import time
 
-from web_push import send_web_push
+from util               import process_to_lower_with_underscore
+from web_push           import send_web_push
 
 import logging
 import sys
@@ -38,9 +39,8 @@ async def coin_gecko():
 
     
     while coin_gecko['loop_state'] == 'running':
+        start = datetime.now()
         try:
-            start = datetime.now()
-
             coin_gecko = await gecko_collection.find_one({})
 
             subscriptions = ",".join(coin_gecko['subscriptions'])
@@ -52,15 +52,17 @@ async def coin_gecko():
                     coin_list = response.json()
                     await update_coins(coins_collection, coin_list)
 
-                await update_gecko(gecko_collection, coin_gecko, {'last_price_update': datetime.now()})
+                await update_gecko(gecko_collection, coin_gecko, {'last_price_update': int(datetime.now().timestamp())})
 
-            while (datetime.now() - start).seconds < 60:
-                coin_gecko = await gecko_collection.find_one({})
-                if coin_gecko['loop_state'] != 'running':
-                    break
-                await asyncio.sleep(5)
+            
         except Exception as e:
             print(e)
+
+        while (datetime.now() - start).seconds < 60:
+            coin_gecko = await gecko_collection.find_one({})
+            if coin_gecko['loop_state'] != 'running':
+                break
+            await asyncio.sleep(5)
 
     await update_gecko(gecko_collection, coin_gecko, {'loop_state': 'stopped'})
 
@@ -95,11 +97,10 @@ async def background_user_sync(app, user):
 
     user = await user_collection.find_one({'_id': user['_id']})
 
-    try:
-        while user['loop_state'] == "running":
-            start = datetime.now()
-            
-            # app.mongo.reload()
+    while user['loop_state'] == "running":
+        start = datetime.now()
+        
+        try:
             user = await user_collection.find_one({'_id': user['_id']})
 
             query = ''
@@ -120,13 +121,15 @@ async def background_user_sync(app, user):
                 if result.data:
                     
                     balance = []
+                    updates = []
                     for key in result.data.keys():
                         if result.data[key]['balance']:
                             for entry in result.data[key]['balance']:
                                 entry['exchange'] = key 
                                 balance.append(entry)
+                                updates.append(process_to_lower_with_underscore(entry))
 
-                    await update_user(user_collection, user, {'portfolio': balance})
+                    await update_user(user_collection, user, {'portfolio': updates})
 
                     
                     total_usd = sum([float(currency['usd']) for exchange in result.data.values() if exchange['balance'] for currency in exchange['balance']])
@@ -182,18 +185,19 @@ async def background_user_sync(app, user):
 
 
                     # user.total_value.append(models.TotalValue(usd_value=total_usd))
-                    await update_user(user_collection, user, {'last_update': datetime.now()})
+                    await update_user(user_collection, user, {'last_update': int(datetime.now().timestamp())})
                 
                 if result.errors:
                     [log.error(error.message) for error in result.errors if hasattr(error, 'message')]
-
-                while (datetime.now() - start).seconds < 60:
-                    user = await user_collection.find_one({'_id': user['_id']})
-                    if user['loop_state'] != 'running':
-                        break
-                    time.sleep(5)
-    except Exception as e:
-        log.error(e)
+        except Exception as e:
+            log.error(e)
+        
+        while (datetime.now() - start).seconds < 60:
+            user = await user_collection.find_one({'_id': user['_id']})
+            if user['loop_state'] != 'running':
+                break
+            time.sleep(5)
+    
 
     await update_user(user_collection, user, {'loop_state': "stopped"})
     

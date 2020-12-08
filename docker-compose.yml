@@ -1,17 +1,30 @@
 version: "3.8"
 services:
-  ptrader:
-    image: ptrader
-    build: .
-    secrets:
-        - db_password
-        - cert
-        - key
-        - vapid_key_txt
-        - vapid_public_key_txt
-    ports:
-      - 8000:8000
+    ptrader-backend:
+        image: ptrader-backend
+        build: ./backend
+        secrets:
+            - db_password
+            - cert
+            - key
+            - vapid_key_txt
+            - vapid_public_key_txt
+        ports:
+            - 8000:8000
 
+    ptrader-frontend:
+        image: ptrader-frontend
+        build: ./frontend
+        secrets:
+            # - db_password
+            - cert
+            - key
+        environment:
+            - NODE_ENV=production
+        ports:
+            - 8001:8001
+        volumes:
+            - "./secrets:/app/secrets"
 secrets:
     db_password:
         external: true

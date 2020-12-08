@@ -171,7 +171,7 @@ class User(ObjectType):
     # meta            = {'collection': 'users'}
     username        = String()
     password        = String()
-    last_update     = DateTime()
+    last_update     = Int()
     portfolio       = List(UserBalance)
     subscription    = JSONString()
     loop_state      = String()
