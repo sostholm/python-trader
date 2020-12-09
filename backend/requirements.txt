@@ -11,3 +11,4 @@ bcrypt
 web3
 cryptography
 motor
+pywebpush
