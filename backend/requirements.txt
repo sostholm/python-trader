@@ -12,3 +12,4 @@ web3
 cryptography
 motor
 pywebpush
+retry

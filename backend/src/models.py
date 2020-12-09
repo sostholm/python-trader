@@ -15,7 +15,7 @@ from mongoengine import (BinaryField, DateTimeField, DictField, Document,
                          StringField, connect)
 
 import motor.motor_asyncio
-
+from util import get_secret
 # from exchanges import Balance
 
 COIN_GECKO = 'https://api.coingecko.com/api/v3'
@@ -25,8 +25,9 @@ PASSWORD = None
 if 'PASSWORD' in os.environ:
     PASSWORD = os.environ["PASSWORD"]
 else:
-    with open('/run/secrets/db_password', 'r') as file:
-        PASSWORD = file.read().replace('\n', '')
+    get_secret('db_password').replace('\n', '')
+    # with open('/run/secrets/db_password', 'r') as file:
+    #     PASSWORD = file.read().replace('\n', '')
 
 
 connect('trader', host=f'mongodb://pine64:27017', username='root', password=PASSWORD, authentication_source='admin')

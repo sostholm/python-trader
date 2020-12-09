@@ -1,4 +1,5 @@
 import re
+from retry import retry
 
 def process_to_lower_with_underscore(fields):
     new_fields = {}
@@ -12,3 +13,11 @@ def process_to_lower_with_underscore(fields):
             new_fields[new_key] = fields[key]
     
     return new_fields
+
+@retry(5, 2)
+def get_secret(secret_name):
+    try:
+        with open('/run/secrets/{0}'.format(secret_name), 'r') as secret_file:
+            return secret_file.read()
+    except IOError:
+        return None
