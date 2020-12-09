@@ -23,8 +23,6 @@ services:
             - NODE_ENV=production
         ports:
             - 8001:8001
-        volumes:
-            - "./secrets:/app/secrets"
 secrets:
     db_password:
         external: true
