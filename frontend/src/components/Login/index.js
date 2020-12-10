@@ -14,6 +14,10 @@ const useStyles = makeStyles((theme) => ({
     },
 }));
 
+let url
+if(process.env.NODE_ENV === 'development') url = 'http://localhost:8001'
+else url = 'https://pine64:8001'
+
 export default function Login(props) {
     const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
@@ -23,7 +27,7 @@ export default function Login(props) {
 
     const login = async () => {
         console.log("Sending websocket data")
-        const payload = await fetch('/login', { method: 'POST', body: JSON.stringify({ 'username': username, 'password': password }) }).then(result => result.json())
+        const payload = await fetch( url + '/login', { method: 'POST', body: JSON.stringify({ 'username': username, 'password': password }) }).then(result => result.json())
         props.setToken(payload.token)
         localStorage.setItem('token', payload.token)
         // await props.getQuery({'username': username, 'password': password})
