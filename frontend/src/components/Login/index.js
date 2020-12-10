@@ -23,7 +23,7 @@ export default function Login(props) {
 
     const login = async () => {
         console.log("Sending websocket data")
-        const payload = await fetch('http://localhost:8000/login', { method: 'POST', body: JSON.stringify({ 'username': username, 'password': password }) }).then(result => result.json())
+        const payload = await fetch('/login', { method: 'POST', body: JSON.stringify({ 'username': username, 'password': password }) }).then(result => result.json())
         props.setToken(payload.token)
         localStorage.setItem('token', payload.token)
         // await props.getQuery({'username': username, 'password': password})
