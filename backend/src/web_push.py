@@ -11,13 +11,13 @@ VAPID_PUBLIC_KEY = None
 try:
     VAPID_PRIVATE_KEY = open('private_key.txt', "r").readline().strip("\n")
 except:
-    get_secret('vapid_key_txt').readline().strip("\n")
+    get_secret('vapid_key_txt').strip("\n")
     # VAPID_PRIVATE_KEY = open('/run/secrets/vapid_key_txt', "r+").readline().strip("\n")
 
 try:
     VAPID_PUBLIC_KEY = open('public_key.txt', "r").read().strip("\n")
 except:
-    get_secret('vapid_public_key_txt').readline().strip("\n")
+    get_secret('vapid_public_key_txt').strip("\n")
     # VAPID_PUBLIC_KEY = open('/run/secrets/vapid_public_key_txt', "r+").read().strip("\n")
 
 VAPID_CLAIMS = {
