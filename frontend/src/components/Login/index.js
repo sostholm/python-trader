@@ -15,8 +15,8 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 let url
-if(process.env.NODE_ENV === 'development') url = 'http://localhost:8001'
-else url = 'https://pine64:8001'
+if(process.env.NODE_ENV === 'development') url = 'http://localhost:8000'
+else url = 'https://pine64:8000'
 
 export default function Login(props) {
     const [username, setUsername] = useState('')
