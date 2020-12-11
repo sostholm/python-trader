@@ -8,5 +8,7 @@ WORKDIR /app
 
 RUN python3 --version
 RUN python3 -m pip install -r requirements.txt
- 
+
+RUN uvicorn runners_app:app --port 8002 &
+
 CMD ["uvicorn", "app:app", "--ssl-keyfile=/run/secrets/key", "--ssl-certfile=/run/secrets/cert", "--host", "0.0.0.0", "--port", "8000"]

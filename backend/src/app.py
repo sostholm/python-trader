@@ -83,7 +83,7 @@ async def login(request):
     if user['loop_state'] != 'running':
         try:
             payload = {'_id': str(user['_id']), 'wallets': user['wallets'], 'exchanges': user['exchanges']}
-            await fetch('http://localhost:8001', 'post', body={"user": payload})
+            await fetch('http://localhost:8002', 'post', body={"user": payload})
         except Exception as e:
             print(e)
 
