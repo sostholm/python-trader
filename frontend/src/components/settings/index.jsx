@@ -22,7 +22,7 @@ const useStyles = makeStyles((theme) => ({
   }));
 //   endpoint: "${subinfo.endpoint}", expirationTime: "${subinfo.expirationTime}", p256dh: "${subinfo.keys.p256dh}", auth: "${subinfo.keys.auth}")
 const ADD_SUBSCRIPTION = gql`
-mutation($endpoint: String!, $expirationTime: Int!, $p256dh: String!, $auth: String!){
+mutation AddSubscription($endpoint: String!, $expirationTime: Int!, $p256dh: String!, $auth: String!){
   addSubscription(endpoint: $endpoint, expirationTime: $expirationTime, p256dh: $p256dh, auth: $auth){
     stuff
   }
