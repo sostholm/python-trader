@@ -4,7 +4,7 @@ services:
         image: ptrader-backend
         build: ./backend
         secrets:
-            - db_password
+            - mongo_password
             - cert
             - key
             - vapid_key_txt
@@ -26,7 +26,7 @@ services:
         volumes:
             - "./secrets:/app/secrets"
 secrets:
-    db_password:
+    mongo_password:
         external: true
     cert:
         external: true
