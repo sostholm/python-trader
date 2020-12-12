@@ -24,11 +24,7 @@ import os
 import time
 from models         import User
 from database       import get_client
-
-from schema         import Query
-from encrypt        import password_decrypt
 from bson           import ObjectId
-from schema         import schema
 from datetime       import datetime
 from multiprocessing import Process
 import background_process
