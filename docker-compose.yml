@@ -11,6 +11,18 @@ services:
             - vapid_public_key_txt
         ports:
             - 8000:8000
+    
+    ptrader-worker:
+        image: ptrader-worker
+        build:
+            context: ./backend/
+            dockerfile: worker.Dockerfile
+        secrets:
+            - mongo_password
+            - cert
+            - key
+            - vapid_key_txt
+            - vapid_public_key_txt
 
     ptrader-frontend:
         image: ptrader-frontend
