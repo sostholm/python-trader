@@ -25,7 +25,7 @@ PASSWORD = None
 if 'PASSWORD' in os.environ:
     PASSWORD = os.environ["PASSWORD"]
 else:
-    PASSWORD = get_secret('db_password').replace('\n', '')
+    PASSWORD = get_secret('mongo_password').replace('\n', '')
     # with open('/run/secrets/db_password', 'r') as file:
     #     PASSWORD = file.read().replace('\n', '')
 
