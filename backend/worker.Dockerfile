@@ -9,4 +9,4 @@ WORKDIR /app
 RUN python3 --version
 RUN python3 -m pip install -r requirements.txt
 
-CMD ["uvicorn", "runners_app:app", "--port", "8002"]
+CMD ["uvicorn", "runners_app:app", "--host", "0.0.0.0", "--port", "8002"]
