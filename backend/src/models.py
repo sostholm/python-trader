@@ -78,6 +78,7 @@ async def fetch(url, type='get', body={}):
 #     status      = graphene.Int()
 #     all_details = graphene.JSONString()
 
+
 class Position(ObjectType):
     # currency_pair   = ReferenceField('CurrencyPair')
     held_currency   = String()
@@ -89,6 +90,23 @@ class Position(ObjectType):
 class Exchange(ObjectType):
     # meta            = {'collection': 'exchanges'}
     name            = String()
+
+class Order(graphene.ObjectType):
+    id          = graphene.String()
+    market      = graphene.String()
+    direction   = graphene.String()
+    order_type  = graphene.String()
+    quantity    = graphene.Float()
+    limit       = graphene.Float()
+    timeInForce = graphene.Int()
+    fillQuantity= graphene.Float()
+    commission  = graphene.Float()
+    proceeds    = graphene.Float()
+    created     = graphene.DateTime()
+    updated     = graphene.DateTime()
+    closed      = graphene.DateTime()
+    all_details = graphene.JSONString()
+    exchange    = Field(Exchange)
 
 # class CoinGeckoCoin(Document):
 #     id                              = StringField(),

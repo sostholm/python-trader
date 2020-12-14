@@ -2,6 +2,7 @@ from os import name
 import graphene
 # UserN, ExchangeNode, AccountNode, WalletNode, WalletTypeNode
 from models import User, Position, Exchange, Account, CoinGecko, Wallet, WalletType
+from exchanges import Order
 from encrypt import password_encrypt, password_decrypt
 import json
 import bcrypt
@@ -118,46 +119,29 @@ class AddPosition(graphene.Mutation):
 
         return AddPosition(position=pb)
 
-# class AddOrder(graphene.Mutation):
-#     class Arguments:
-#         user_id     = graphene.String()
-#         side        = graphene.String()
-#         fee         = graphene.Float()
-#         created_at  = graphene.types.datetime.DateTime()
-#         deal_price  = graphene.Float()
-#         avg_price   = graphene.Float()
-#         volume      = graphene.Float()
-#         price       = graphene.Float()
-#         status_msg  = graphene.String()
-#         remain_volume = graphene.Float()
-#         baseCoin    = graphene.String()
-#         countCoin   = graphene.String()
-#         status      = graphene.Int()
-#         all_details = graphene.types.json.JSONString()
+class AddOrder(graphene.Mutation):
+    class Arguments:
+        market      = graphene.String()
+        direction   = graphene.String()
+        order_type  = graphene.String()
+        quantity    = graphene.Float()
+        limit       = graphene.Float()
 
-#     order = graphene.Field(Order)
+    order = graphene.Field(Order)
 
-#     @staticmethod
-#     def mutate(root, info, **input):
-#         pb = Order(
-#             side        = input['side'],
-#             fee         = input['fee'],
-#             created_at  = input['created_at'],
-#             deal_price  = input['deal_price'],
-#             avg_price   = input['avg_price'],
-#             volume      = input['volume'],
-#             price       = input['price'],
-#             status_msg  = input['status_msg'],
-#             remain_volume = input['remain_volume'],
-#             baseCoin    = input['baseCoin'],
-#             countCoin   = input['countCoin'],
-#             status      = input['status'],
-#             all_details = input['all_details'],
-#         )
-#         user = User.objects(id=input['user_id']).first()
-#         user.orders.append(pb).save()
+    @staticmethod
+    async def mutate(root, info, **input):
+        id = info.context['request'].user.display_name
+        order = dict(
+            market      = input['market'],
+            direction   = input['direction'],
+            order_type  = input['order_type'],
+            quantity    = input['quantity'],
+            limit       = input['limit'],
+        )
+        await info.context['client'].trader.users.update_one({'_id': ObjectId(id)}, {'$push': {'order': order}})
 
-#         return AddOrder(order=pb)
+        return AddOrder(order=order)
 
 # class AddExchange(graphene.Mutation):
 #     class Arguments:

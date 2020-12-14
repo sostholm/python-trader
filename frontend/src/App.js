@@ -87,15 +87,6 @@ function App() {
       if (exp < now) {
         logout()
       }
-
-      else {
-        let timer1 = setTimeout(() => {
-          logout()
-        }, exp - now * 1000)
-        return () => {
-          clearTimeout(timer1)
-        }
-      }
     }
     else if (!token && view !== 'Login') setView('Login')
   }, [token])
