@@ -26,8 +26,8 @@ const darkTheme = createMuiTheme({
 
 let url
 if(process.env.NODE_ENV === 'development') url = 'http://localhost:8000'
-else url = 'https://pine64:8000'
-
+// else url = 'https://pine64:8000'
+else url = 'http://localhost:8000'
 
 function createGQL() {
   const httpLink = createHttpLink({

@@ -121,18 +121,21 @@ class AddPosition(graphene.Mutation):
 
 class AddOrder(graphene.Mutation):
     class Arguments:
-        market      = graphene.String()
-        direction   = graphene.String()
-        order_type  = graphene.String()
-        quantity    = graphene.Float()
-        limit       = graphene.Float()
+        exchange    = graphene.String(required=True)
+        market      = graphene.String(required=True)
+        direction   = graphene.String(required=True)
+        order_type  = graphene.String(required=True)
+        quantity    = graphene.Float(required=True)
+        limit       = graphene.Float(required=True)
 
     order = graphene.Field(Order)
 
     @staticmethod
     async def mutate(root, info, **input):
         id = info.context['request'].user.display_name
+        exchange = await info.context['client'].trader.exchanges.find_one({'_id': input['exchange_id']})
         order = dict(
+            exchange    = exchange['_id'],
             market      = input['market'],
             direction   = input['direction'],
             order_type  = input['order_type'],
@@ -267,9 +270,9 @@ class AddSubscription(graphene.Mutation):
     async def mutate(root, info, **input):
         id = info.context['request'].user.display_name
 
-        sub = {"endpoint": input['endpoint'], "expirationTime": input['expirationTime'], "keys": {"p256dh": input['p256dh'], "auth": input['auth']}}
+        sub = {"endpoint": input['endpoint'], "expirationTime": None, "keys": {"p256dh": input['p256dh'], "auth": input['auth']}}
         
-        await info.context['client'].trader.users.update_one({'_id': ObjectId(id)}, {'$set': {'subscription': sub}})
+        await info.context['request'].app.mongo.trader.users.update_one({'_id': ObjectId(id)}, {'$set': {'subscription': sub}})
         return AddSubscription(stuff='worked')
 
 # class RemoveSubscription(graphene.Mutation):

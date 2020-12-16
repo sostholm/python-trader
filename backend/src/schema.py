@@ -150,8 +150,8 @@ class TimerMiddleware:
 #         info.context['coin_gecko'] = coin_gecko
 #         print(f'request {time.time() - start}s')
 #         return next(root, info, **args)
-schema = graphene.Schema(query=Query)
-# schema = graphene.Schema(query=Query, mutation=Mutation)
+# schema = graphene.Schema(query=Query)
+schema = graphene.Schema(query=Query, mutation=Mutation)
 #, mutation=Mutation
 
 # query = """

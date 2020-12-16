@@ -59,6 +59,7 @@ export async function subscribeUser(func) {
       }).then(function (sub) {
         console.log('Endpoint URL: ', sub.endpoint);
         console.log('Origin: ', new URL(sub.endpoint).origin)
+        console.log(sub.toJSON())
         func(sub.toJSON())
         return sub
       }).catch(function (e) {
