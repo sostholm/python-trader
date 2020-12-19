@@ -1,3 +1,47 @@
+import { assert } from 'util'
+import Dexie from 'dexie'
+
+let url
+if(process.env.NODE_ENV === 'development') url = 'http://localhost:8000'
+else url = 'https://pine64:8000'
+
+export const API_URL = url
+
+const db = new Dexie('python-trader');
+db.version(1).stores({
+  token: "++id,token"
+});
+
+export const fetcher = async (gql) => {
+  const token = await db.token.first()
+  const response = await fetch(API_URL + '/graphql', {
+    method: 'POST',
+    cache: 'no-cache',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: gql
+  })
+
+  return response.json()
+}
+
+export const update_token = (token) => `
+mutation{
+  updateToken(token: "${token}"){
+    token
+  }
+}
+`
+
+export const refresh_token = async () => {
+  const token = await db.token.first()
+  const result = await fetcher(update_token(token.token))
+  assert('token' in result)
+  await db.token.update(1, { token: token });
+}
+
 export const user_balance = `
 {
     binance{
@@ -109,14 +153,14 @@ export const get_exchange_balance = (exchange) => {
       }
     } 
   `
-  if(!Array.isArray(exchange)){
+  if (!Array.isArray(exchange)) {
     exchange = [exchange]
   }
 
   return 'query{' + exchange.map(ex => exchange_query(ex.exchange.name)).join('\n') + '}'
 }
 
-export const updateSubscription = (subinfo) =>{
+export const updateSubscription = (subinfo) => {
   console.log(subinfo)
   return `
 mutation{

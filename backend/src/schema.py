@@ -123,6 +123,7 @@ class Mutation(graphene.ObjectType):
     add_wallet      = mutations.AddWallet.Field()
     add_token       = mutations.AddToken.Field()
     add_subscription= mutations.AddSubscription.Field()
+    update_token    = mutations.UpdateToken.Field()
     # add_user        = mutations.AddUser.Field()
 
     # update_exchange = mutations.UpdateExchange.Field()

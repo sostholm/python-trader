@@ -56,11 +56,18 @@ export async function subscribeUser(func) {
       reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: applicationServerKey
-      }).then(function (sub) {
+      }).then(async function (sub) {
         console.log('Endpoint URL: ', sub.endpoint);
         console.log('Origin: ', new URL(sub.endpoint).origin)
         console.log(sub.toJSON())
         func(sub.toJSON())
+        try {
+          await reg.periodicSync.register('sub-refresh', {
+          minInterval: 23 * 60 * 60 * 1000,
+            })
+        } catch {
+            console.log('Periodic Sync could not be registered!');
+        }
         return sub
       }).catch(function (e) {
         if (Notification.permission === 'denied') {
@@ -70,5 +77,6 @@ export async function subscribeUser(func) {
         }
       });
     })
+    
   }
 }

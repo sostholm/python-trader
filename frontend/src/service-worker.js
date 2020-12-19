@@ -12,6 +12,8 @@ import { ExpirationPlugin } from 'workbox-expiration';
 import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
 import { StaleWhileRevalidate } from 'workbox-strategies';
+import { refresh_token } from 'services'
+import { subscribeUser } from 'components/push-notification'
 
 clientsClaim();
 
@@ -82,4 +84,13 @@ self.addEventListener('push', function(event) {
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('periodicsync', event => {
+  if (event.tag == 'token-refresh') {
+    event.waitUntil(refresh_token());
+  }
+  if (event.tag == 'sub-refresh'){
+    event.waitUntil(subscribeUser());
+  }
 });

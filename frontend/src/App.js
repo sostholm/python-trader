@@ -8,6 +8,7 @@ import { ApolloProvider } from '@apollo/client'
 // import { RestLink } from 'apollo-link-rest'
 import { createMuiTheme, makeStyles, ThemeProvider } from '@material-ui/core/styles'
 import jwt_decode from "jwt-decode"
+import Dexie from 'dexie'
 
 import Login from 'components/Login'
 import AddAccount from 'components/add-account'
@@ -17,6 +18,13 @@ import Balance from 'components/balance'
 import Settings from 'components/settings'
 import Drawer from 'components/drawer'
 import Carousel from 'views/carousel'
+import { API_URL } from 'services'
+
+
+const db = new Dexie('python-trader');
+db.version(1).stores({
+  token: "++id,token"
+});
 
 const darkTheme = createMuiTheme({
   palette: {
@@ -24,19 +32,14 @@ const darkTheme = createMuiTheme({
   },
 });
 
-let url
-if(process.env.NODE_ENV === 'development') url = 'http://localhost:8000'
-else url = 'https://pine64:8000'
-// else url = 'http://localhost:8000'
-
-function createGQL() {
+function createGQL(token) {
   const httpLink = createHttpLink({
-    uri: url + '/graphql',
+    uri: API_URL + '/graphql',
   });
 
   const authLink = setContext((_, { headers }) => {
     // get the authentication token from local storage if it exists
-    const token = localStorage.getItem('token');
+    // const token = localStorage.getItem('token');
     // return the headers to the context so httpLink can read them
     return {
       headers: {
@@ -62,42 +65,54 @@ const views = [
 ]
 
 function App() {
-  const [token, setToken] = useState(localStorage.getItem('token'))
+  // const [token, setToken] = useState()
   const [client, setClient] = useState()
   const [loggedIn, setLoggedIn] = useState(false)
   const [view, setView] = useState('Login')
   const [gqlLink, setGQLLink] = useState(false)
 
+  const get_token = async () => {
+    const token = await db.token.get(1)
+    console.log(token)
+    return token
+  }
+
   const logout = () => {
-    localStorage.removeItem('token')
-    setToken(null)
+    db.token.clear()
+    // setToken(null)
     window.location.reload()
   }
 
   useEffect(() => {
-    if (localStorage.getItem('token')) {
-      setLoggedIn(true)
-    }
+    get_token().then(result => {
+      if (result) {
+        setLoggedIn(true)
+      }
+    })
+
   }, [])
 
-  useEffect(() => {
-    if (token) {
-      const now = parseInt((new Date).getTime() / 1000)
-      const exp = jwt_decode(token).exp
-      if (exp < now) {
-        logout()
-      }
-    }
-    else if (!token && view !== 'Login') setView('Login')
-  }, [token])
+  // useEffect(() => {
+  //   if (token) {
+  //     const now = parseInt((new Date).getTime() / 1000)
+  //     const exp = jwt_decode(token).exp
+  //     if (exp < now) {
+  //       logout()
+  //     }
+  //   }
+  //   else if (!token && view !== 'Login') setView('Login')
+  // }, [token])
 
   useEffect(() => {
     if (!loggedIn && view !== 'Login') {
       setView('Login')
     }
     else if (loggedIn && !client) {
-      setClient(createGQL())
-      setView('Balance')
+      db.token.get(1).then(result => {
+        console.log(result)
+        setClient(createGQL(result.token))
+        setView('Balance')
+      })
     }
   }, [loggedIn])
 
@@ -114,10 +129,10 @@ function App() {
     <div className="App">
       <div className="App-header">
         <ThemeProvider theme={darkTheme}>
-          {view === 'Login' && <Login loggedIn={loggedIn} setLoggedIn={setLoggedIn} setToken={setToken} setView={setView} />}
+          {view === 'Login' && <Login loggedIn={loggedIn} setLoggedIn={setLoggedIn} setView={setView} />}
 
           {client && <ApolloProvider client={client}>
-            {<Drawer views={views} setView={setView} logout={logout}/>}
+            {<Drawer views={views} setView={setView} logout={logout} />}
             {loggedIn && view === 'Balance' && <Balance />}
             {loggedIn && view == 'Settings' && <Settings />}
             {/* <button onClick={displayNotification}>Display Notification</button> */}

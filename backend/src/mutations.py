@@ -1,13 +1,15 @@
 from os import name
 import graphene
 # UserN, ExchangeNode, AccountNode, WalletNode, WalletTypeNode
-from models import User, Position, Exchange, Account, CoinGecko, Wallet, WalletType
-from exchanges import Order
-from encrypt import password_encrypt, password_decrypt
+from models     import User, Position, Exchange, Account, CoinGecko, Wallet, WalletType
+from exchanges  import Order
+from encrypt    import password_encrypt, password_decrypt
 import json
 import bcrypt
 from bson import ObjectId
 import asyncio
+import jwt
+from datetime import datetime
 
 
 class AddUser(graphene.Mutation):
@@ -146,6 +148,21 @@ class AddOrder(graphene.Mutation):
 
         return AddOrder(order=order)
 
+class UpdateToken(graphene.Mutation):
+    class Arguments:
+        token = graphene.String(required=True)
+
+    token = graphene.Field(graphene.String)
+
+    @staticmethod
+    async def mutate(root, info, **input):
+        token_id = jwt.decode(input['token'], 'secret', algorithms=['HS256'])['id']
+        id = info.context['request'].user.display_name
+        assert token_id == id
+
+        token = jwt.encode({'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=1800), 'id': id}, 'secret', algorithm='HS256').decode('utf-8')
+
+        return UpdateToken(token=token)
 # class AddExchange(graphene.Mutation):
 #     class Arguments:
 #         name = graphene.String()

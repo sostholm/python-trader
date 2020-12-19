@@ -2,6 +2,15 @@ import React, { useState } from 'react'
 import { makeStyles } from '@material-ui/core/styles';
 import TextField from '@material-ui/core/TextField';
 import Button from '@material-ui/core/Button';
+import Dexie from 'dexie'
+
+import { API_URL } from 'services'
+
+const db = new Dexie('python-trader');
+db.version(1).stores({
+  token: "++id,token"
+});
+
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -14,10 +23,6 @@ const useStyles = makeStyles((theme) => ({
     },
 }));
 
-let url
-if(process.env.NODE_ENV === 'development') url = 'http://localhost:8000'
-else url = 'https://pine64:8000'
-
 export default function Login(props) {
     const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
@@ -27,11 +32,21 @@ export default function Login(props) {
 
     const login = async () => {
         console.log("Sending websocket data")
-        const payload = await fetch( url + '/login', { method: 'POST', body: JSON.stringify({ 'username': username, 'password': password }) }).then(result => result.json())
-        props.setToken(payload.token)
-        localStorage.setItem('token', payload.token)
+        const payload = await fetch( API_URL + '/login', { method: 'POST', body: JSON.stringify({ 'username': username, 'password': password }) }).then(result => result.json())
+        // props.setToken(payload.token)
+        await db.token.put({id: 1, token: payload.token});
         // await props.getQuery({'username': username, 'password': password})
         props.setLoggedIn(true, props.setView('Balance'))
+
+        const registration = await navigator.serviceWorker.ready
+        try {
+            await registration.periodicSync.register('token-refresh', {
+            minInterval: 15 * 60 * 1000,
+            })
+        } catch {
+            console.log('Periodic Sync could not be registered!');
+        }
+
     }
 
     return (
