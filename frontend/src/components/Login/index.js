@@ -43,8 +43,10 @@ export default function Login(props) {
             await registration.periodicSync.register('token-refresh', {
             minInterval: 15 * 60 * 1000,
             })
-        } catch {
+            console.log('Periodic Sync registered?');
+        } catch(e) {
             console.log('Periodic Sync could not be registered!');
+            console.log(e)
         }
 
     }

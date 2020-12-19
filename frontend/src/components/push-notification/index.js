@@ -1,8 +1,6 @@
 // import * as serviceWorker from 'serviceWorker';
 
-Notification.requestPermission(status => {
-  console.log('Notification permission status:', status);
-});
+
 
 export function notification() {
 
@@ -43,13 +41,18 @@ function urlBase64ToUint8Array(base64String) {
     .replace(/\-/g, '+')
     .replace(/_/g, '/')
     ;
-  const rawData = window.atob(base64);
+  let rawData
+
+  rawData = atob(base64);
   return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
 }
 
 const applicationServerKey = urlBase64ToUint8Array('BOnPOdBMs6jPhfJ_F9EpeyiPOc2dX4niC6-V_zSZcRSn2TwRkI4i_TeLqxiSTSiPgm89355SeAZFZnJp9QMfWqY')
 
 export async function subscribeUser(func) {
+  Notification.requestPermission(status => {
+    console.log('Notification permission status:', status);
+  });
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then(function (reg) {
 
@@ -63,10 +66,10 @@ export async function subscribeUser(func) {
         func(sub.toJSON())
         try {
           await reg.periodicSync.register('sub-refresh', {
-          minInterval: 23 * 60 * 60 * 1000,
-            })
+            minInterval: 23 * 60 * 60 * 1000,
+          })
         } catch {
-            console.log('Periodic Sync could not be registered!');
+          console.log('Periodic Sync could not be registered!');
         }
         return sub
       }).catch(function (e) {
@@ -77,6 +80,6 @@ export async function subscribeUser(func) {
         }
       });
     })
-    
+
   }
 }

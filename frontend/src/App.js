@@ -109,7 +109,6 @@ function App() {
     }
     else if (loggedIn && !client) {
       db.token.get(1).then(result => {
-        console.log(result)
         setClient(createGQL(result.token))
         setView('Balance')
       })
