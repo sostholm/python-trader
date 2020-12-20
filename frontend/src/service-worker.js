@@ -88,9 +88,11 @@ self.addEventListener('push', function(event) {
 
 self.addEventListener('periodicsync', event => {
   if (event.tag == 'token-refresh') {
+    console.log('[Service Worker] token-refresh.');
     event.waitUntil(refresh_token());
   }
   if (event.tag == 'sub-refresh'){
+    console.log('[Service Worker] sub-refresh.');
     event.waitUntil(subscribeUser());
   }
 });

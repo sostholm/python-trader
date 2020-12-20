@@ -41,7 +41,8 @@ export default function Login(props) {
         const registration = await navigator.serviceWorker.ready
         try {
             await registration.periodicSync.register('token-refresh', {
-            minInterval: 15 * 60 * 1000,
+            // minInterval: 15 * 60 * 1000,
+                minInterval: 10 * 1000,
             })
             console.log('Periodic Sync registered?');
         } catch(e) {
