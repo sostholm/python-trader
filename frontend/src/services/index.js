@@ -1,5 +1,5 @@
 import { assert } from 'util'
-import Dexie from 'dexie'
+// import Dexie from 'dexie'
 
 let url
 if(process.env.NODE_ENV === 'development') url = 'http://localhost:8000'
@@ -7,40 +7,40 @@ else url = 'https://pine64:8000'
 
 export const API_URL = url
 
-const db = new Dexie('python-trader');
-db.version(1).stores({
-  token: "++id,token"
-});
+// const db = new Dexie('python-trader');
+// db.version(1).stores({
+//   token: "++id,token"
+// });
 
-export const fetcher = async (gql) => {
-  const token = await db.token.first()
-  const response = await fetch(API_URL + '/graphql', {
-    method: 'POST',
-    cache: 'no-cache',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: gql
-  })
+// export const fetcher = async (gql) => {
+//   const token = await db.token.first()
+//   const response = await fetch(API_URL + '/graphql', {
+//     method: 'POST',
+//     cache: 'no-cache',
+//     headers: {
+//       'Content-Type': 'application/json',
+//       'Authorization': `Bearer ${token}`,
+//     },
+//     body: gql
+//   })
 
-  return response.json()
-}
+//   return response.json()
+// }
 
-export const update_token = (token) => `
-mutation{
-  updateToken(token: "${token}"){
-    token
-  }
-}
-`
+// export const update_token = (token) => `
+// mutation{
+//   updateToken(token: "${token}"){
+//     token
+//   }
+// }
+// `
 
-export const refresh_token = async () => {
-  const token = await db.token.first()
-  const result = await fetcher(update_token(token.token))
-  assert('token' in result)
-  await db.token.update(1, { token: token });
-}
+// export const refresh_token = async () => {
+//   const token = await db.token.first()
+//   const result = await fetcher(update_token(token.token))
+//   assert('token' in result)
+//   await db.token.update(1, { token: token });
+// }
 
 export const user_balance = `
 {

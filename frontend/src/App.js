@@ -8,7 +8,6 @@ import { ApolloProvider } from '@apollo/client'
 // import { RestLink } from 'apollo-link-rest'
 import { createMuiTheme, makeStyles, ThemeProvider } from '@material-ui/core/styles'
 import jwt_decode from "jwt-decode"
-import Dexie from 'dexie'
 
 import Login from 'components/Login'
 import AddAccount from 'components/add-account'
@@ -20,40 +19,11 @@ import Drawer from 'components/drawer'
 import Carousel from 'views/carousel'
 import { API_URL } from 'services'
 
-
-const db = new Dexie('python-trader');
-db.version(1).stores({
-  token: "++id,token"
-});
-
 const darkTheme = createMuiTheme({
   palette: {
     type: 'dark',
   },
 });
-
-function createGQL(token) {
-  const httpLink = createHttpLink({
-    uri: API_URL + '/graphql',
-  });
-
-  const authLink = setContext((_, { headers }) => {
-    // get the authentication token from local storage if it exists
-    // const token = localStorage.getItem('token');
-    // return the headers to the context so httpLink can read them
-    return {
-      headers: {
-        ...headers,
-        authorization: token ? `Bearer ${token}` : "",
-      }
-    }
-  });
-
-  return new ApolloClient({
-    link: authLink.concat(httpLink),
-    cache: new InMemoryCache()
-  });
-}
 
 const views = [
   { key: 'Login', text: 'Login' },
@@ -65,32 +35,47 @@ const views = [
 ]
 
 function App() {
-  // const [token, setToken] = useState()
+  const [token, setToken] = useState()
   const [client, setClient] = useState()
   const [loggedIn, setLoggedIn] = useState(false)
   const [view, setView] = useState('Login')
   const [gqlLink, setGQLLink] = useState(false)
 
-  const get_token = async () => {
-    const token = await db.token.get(1)
-    console.log(token)
-    return token
+  function createGQL() {
+    const httpLink = createHttpLink({
+      uri: API_URL + '/graphql',
+    });
+  
+    const authLink = setContext((_, { headers }) => {
+      // get the authentication token from local storage if it exists
+      // const token = localStorage.getItem('token');
+      // return the headers to the context so httpLink can read them
+      return {
+        headers: {
+          ...headers,
+          authorization: token ? `Bearer ${token}` : "",
+        }
+      }
+    });
+  
+    return new ApolloClient({
+      link: authLink.concat(httpLink),
+      cache: new InMemoryCache()
+    });
   }
 
   const logout = () => {
-    db.token.clear()
-    // setToken(null)
     window.location.reload()
   }
 
-  useEffect(() => {
-    get_token().then(result => {
-      if (result) {
-        setLoggedIn(true)
-      }
-    })
+  // useEffect(() => {
+  //   get_token().then(result => {
+  //     if (result) {
+  //       setLoggedIn(true)
+  //     }
+  //   })
 
-  }, [])
+  // }, [])
 
   // useEffect(() => {
   //   if (token) {
@@ -107,13 +92,11 @@ function App() {
     if (!loggedIn && view !== 'Login') {
       setView('Login')
     }
-    else if (loggedIn && !client) {
-      db.token.get(1).then(result => {
-        setClient(createGQL(result.token))
+    else if (loggedIn && !client && token) {
+      setClient(createGQL())
         setView('Balance')
-      })
     }
-  }, [loggedIn])
+  }, [loggedIn, token])
 
   const views = [
     { key: 'Login', text: 'Login' },
@@ -128,7 +111,7 @@ function App() {
     <div className="App">
       <div className="App-header">
         <ThemeProvider theme={darkTheme}>
-          {view === 'Login' && <Login loggedIn={loggedIn} setLoggedIn={setLoggedIn} setView={setView} />}
+          {view === 'Login' && <Login loggedIn={loggedIn} setLoggedIn={setLoggedIn} setToken={setToken} setView={setView} />}
 
           {client && <ApolloProvider client={client}>
             {<Drawer views={views} setView={setView} logout={logout} />}

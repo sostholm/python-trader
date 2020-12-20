@@ -33,23 +33,9 @@ export default function Login(props) {
     const login = async () => {
         console.log("Sending websocket data")
         const payload = await fetch( API_URL + '/login', { method: 'POST', body: JSON.stringify({ 'username': username, 'password': password }) }).then(result => result.json())
-        // props.setToken(payload.token)
-        await db.token.put({id: 1, token: payload.token});
+        props.setToken(payload.token)
         // await props.getQuery({'username': username, 'password': password})
         props.setLoggedIn(true, props.setView('Balance'))
-
-        const registration = await navigator.serviceWorker.ready
-        try {
-            await registration.periodicSync.register('token-refresh', {
-            // minInterval: 15 * 60 * 1000,
-                minInterval: 10 * 1000,
-            })
-            console.log('Periodic Sync registered?');
-        } catch(e) {
-            console.log('Periodic Sync could not be registered!');
-            console.log(e)
-        }
-
     }
 
     return (

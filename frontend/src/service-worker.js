@@ -12,7 +12,6 @@ import { ExpirationPlugin } from 'workbox-expiration';
 import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
 import { StaleWhileRevalidate } from 'workbox-strategies';
-import { refresh_token } from 'services'
 import { subscribeUser } from 'components/push-notification'
 
 clientsClaim();
@@ -87,10 +86,6 @@ self.addEventListener('push', function(event) {
 });
 
 self.addEventListener('periodicsync', event => {
-  if (event.tag == 'token-refresh') {
-    console.log('[Service Worker] token-refresh.');
-    event.waitUntil(refresh_token());
-  }
   if (event.tag == 'sub-refresh'){
     console.log('[Service Worker] sub-refresh.');
     event.waitUntil(subscribeUser());

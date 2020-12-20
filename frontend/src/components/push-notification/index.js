@@ -66,7 +66,7 @@ export async function subscribeUser(func) {
         func(sub.toJSON())
         try {
           await reg.periodicSync.register('sub-refresh', {
-            minInterval: 23 * 60 * 60 * 1000,
+            minInterval: 10 * 1000,
           })
         } catch {
           console.log('Periodic Sync could not be registered!');
