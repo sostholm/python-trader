@@ -17,7 +17,7 @@ import Balance from 'components/balance'
 import Settings from 'components/settings'
 import Drawer from 'components/drawer'
 import Carousel from 'views/carousel'
-import { API_URL } from 'services'
+import { API_URL, refresh_token } from 'services'
 
 const darkTheme = createMuiTheme({
   palette: {
@@ -45,7 +45,7 @@ function App() {
     const httpLink = createHttpLink({
       uri: API_URL + '/graphql',
     });
-  
+
     const authLink = setContext((_, { headers }) => {
       // get the authentication token from local storage if it exists
       // const token = localStorage.getItem('token');
@@ -57,7 +57,7 @@ function App() {
         }
       }
     });
-  
+
     return new ApolloClient({
       link: authLink.concat(httpLink),
       cache: new InMemoryCache()
@@ -68,12 +68,14 @@ function App() {
     window.location.reload()
   }
 
-  // useEffect(() => {
-  //   get_token().then(result => {
-  //     if (result) {
-  //       setLoggedIn(true)
-  //     }
-  //   })
+  useEffect(() => {
+    if (loggedIn) {
+      const interval = setInterval(() => {
+        refresh_token(token).then(token => setToken(token))
+      },15 * 60 * 1000);
+      return () => clearInterval(interval);
+    }
+  }, [loggedIn]);
 
   // }, [])
 
@@ -94,7 +96,7 @@ function App() {
     }
     else if (loggedIn && !client && token) {
       setClient(createGQL())
-        setView('Balance')
+      setView('Balance')
     }
   }, [loggedIn, token])
 

@@ -9,7 +9,7 @@ import bcrypt
 from bson import ObjectId
 import asyncio
 import jwt
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 class AddUser(graphene.Mutation):
@@ -160,7 +160,7 @@ class UpdateToken(graphene.Mutation):
         id = info.context['request'].user.display_name
         assert token_id == id
 
-        token = jwt.encode({'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=1800), 'id': id}, 'secret', algorithm='HS256').decode('utf-8')
+        token = jwt.encode({'exp': datetime.utcnow() + timedelta(seconds=1800), 'id': id}, 'secret', algorithm='HS256').decode('utf-8')
 
         return UpdateToken(token=token)
 # class AddExchange(graphene.Mutation):
