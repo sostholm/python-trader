@@ -41,7 +41,7 @@ function App() {
   const [view, setView] = useState('Login')
   const [gqlLink, setGQLLink] = useState(false)
 
-  function createGQL() {
+  function createGQL(fed_token) {
     const httpLink = createHttpLink({
       uri: API_URL + '/graphql',
     });
@@ -53,7 +53,7 @@ function App() {
       return {
         headers: {
           ...headers,
-          authorization: token ? `Bearer ${token}` : "",
+          authorization: fed_token ? `Bearer ${fed_token}` : "",
         }
       }
     });
@@ -68,11 +68,16 @@ function App() {
     window.location.reload()
   }
 
+  const update_token = async () => {
+    const new_token = await refresh_token(token)
+    setToken(new_token)
+  }
+
   useEffect(() => {
     if (loggedIn) {
       const interval = setInterval(() => {
-        refresh_token(token).then(token => setToken(token))
-      },15 * 60 * 1000);
+        update_token()
+      }, 15 * 60 * 1000);
       return () => clearInterval(interval);
     }
   }, [loggedIn]);
@@ -95,7 +100,7 @@ function App() {
       setView('Login')
     }
     else if (loggedIn && !client && token) {
-      setClient(createGQL())
+      setClient(createGQL(token))
       setView('Balance')
     }
   }, [loggedIn, token])
