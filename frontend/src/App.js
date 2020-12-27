@@ -71,7 +71,10 @@ function App() {
           }
         }
       }
-      if (networkError) console.log(`[Network error]: ${networkError}`)
+      if (networkError){
+        if(networkError.bodyText === 'Signature has expired') logout()
+        else console.log(`[Network error]: ${networkError}`)
+      } 
     })
     
     return new ApolloClient({
