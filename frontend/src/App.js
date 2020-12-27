@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import logo from './logo.svg'
 import './App.css'
-import { ApolloClient, createHttpLink, InMemoryCache, onError } from '@apollo/client'
+import { ApolloClient, createHttpLink, InMemoryCache } from '@apollo/client'
+import { onError } from "@apollo/client/link/error"
 import { setContext } from '@apollo/client/link/context'
 import { ApolloProvider } from '@apollo/client'
 // import {  } from '@apollo/link-error'
@@ -41,11 +42,15 @@ function App() {
   const [view, setView] = useState('Login')
   const [gqlLink, setGQLLink] = useState(false)
 
+  const logout = () => {
+    window.location.reload()
+  }
+
   function createGQL(fed_token) {
     const httpLink = createHttpLink({
       uri: API_URL + '/graphql',
     });
-
+    
     const authLink = setContext((_, { headers }) => {
       // get the authentication token from local storage if it exists
       // const token = localStorage.getItem('token');
@@ -58,15 +63,24 @@ function App() {
       }
     });
 
+    const errorLink = onError(({ graphQLErrors, networkError }) => {
+      if (graphQLErrors) {
+        for (let err of graphQLErrors) {
+          switch (err.extensions.code) {
+            case 'UNAUTHENTICATED': logout()
+          }
+        }
+      }
+      if (networkError) console.log(`[Network error]: ${networkError}`)
+    })
+    
     return new ApolloClient({
-      link: authLink.concat(httpLink),
+      link: authLink.concat(errorLink).concat(httpLink),
       cache: new InMemoryCache()
     });
   }
 
-  const logout = () => {
-    window.location.reload()
-  }
+  
 
   const update_token = async () => {
     const new_token = await refresh_token(token)
