@@ -3,7 +3,7 @@ import { assert } from 'util'
 
 let url
 if (process.env.NODE_ENV === 'development') url = 'http://localhost:8000'
-else url = 'https://pine64:8000'
+else url = 'https://server:8000'
 
 export const API_URL = url
 
