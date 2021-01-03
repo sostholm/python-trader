@@ -17,4 +17,4 @@ else:
     #     PASSWORD = file.read().replace('\n', '')
 
 def get_client(loop):
-    return  motor.motor_asyncio.AsyncIOMotorClient(f'mongodb://root:{PASSWORD}@pine64:27017', io_loop=loop)
+    return  motor.motor_asyncio.AsyncIOMotorClient(f'mongodb://root:{PASSWORD}@{os.environ["DATABASE_HOSTNAME"]}:27017', io_loop=loop)
