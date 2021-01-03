@@ -30,7 +30,7 @@ else:
     #     PASSWORD = file.read().replace('\n', '')
 
 
-connect('trader', host=f'mongodb://pine64:27017', username='root', password=PASSWORD, authentication_source='admin')
+connect('trader', host=f'mongodb://server:27017', username='root', password=PASSWORD, authentication_source='admin')
 client = motor.motor_asyncio.AsyncIOMotorClient()
 
 async def fetch(url, type='get', body={}):

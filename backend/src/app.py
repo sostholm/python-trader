@@ -87,7 +87,7 @@ async def login(request):
         except Exception as e:
             print(e)
 
-    token = jwt.encode({'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=1800), 'id': str(user['_id'])}, 'secret', algorithm='HS256').decode('utf-8')
+    token = jwt.encode({'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=1800), 'id': str(user['_id'])}, 'secret', algorithm='HS256')
     response = {'token': token}
     return JSONResponse(response)
 
