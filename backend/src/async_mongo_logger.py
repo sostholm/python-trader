@@ -8,7 +8,7 @@ class Logger:
     batch_timeout   = 1
     name            = None
 
-    def __init__(self, username, password, url, port, database, collection, loop=None, batching=None, batch_timeout=1, name='nameless', client=None):
+    def __init__(self, database, collection, username=None, password=None, url=None, port=None, loop=None, batching=None, batch_timeout=1, name='nameless', client=None):
 
         if not client:
             if not loop:

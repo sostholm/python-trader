@@ -68,11 +68,11 @@ async def login(request):
     if user['loop_state'] != 'running':
         try:
             payload = {'_id': str(user['_id']), 'wallets': user['wallets'], 'exchanges': user['exchanges']}
-            await fetch('http://ptrader-worker:8002', 'post', body={"user": payload})
+            await fetch(f'http://{os.environ["WORKER"]}:8002', 'post', body={"user": payload})
         except Exception as e:
             print(e)
 
-    token = jwt.encode({'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=1800), 'id': str(user['_id'])}, 'secret', algorithm='HS256')
+    token = jwt.encode({'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=1800), 'id': str(user['_id'])}, 'secret', algorithm='HS256').decode('utf-8')
     response = {'token': token}
     return JSONResponse(response)
 

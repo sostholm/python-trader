@@ -5,6 +5,7 @@ services:
         build: ./backend
         environment:
             - DATABASE_HOSTNAME=server
+            - WORKER=ptrader-worker
         secrets:
             - mongo_password
             - cert

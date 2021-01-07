@@ -35,7 +35,7 @@ async def coin_gecko():
     await update_gecko(gecko_collection, coin_gecko, {'loop_state':'running'})
     coin_gecko = await gecko_collection.find_one({})
 
-    logger.info('starting coin gecko sync...')
+    await logger.info('starting coin gecko sync...')
 
     
     while coin_gecko['loop_state'] == 'running':
@@ -91,7 +91,7 @@ async def background_user_sync(app, user):
     user_collection = client.trader.users
     user = await user_collection.find_one({'_id': ObjectId(user['_id'])})
 
-    logger.info(f'starting background sync for {user["username"]}')
+    await logger.info(f'starting background sync for {user["username"]}')
     
     await update_user(user_collection, user, {'loop_state': "running"})
 
@@ -137,16 +137,16 @@ async def background_user_sync(app, user):
                     try:
                         await handle_notifications(user_collection=user_collection, user=user, balance=balance)
                     except Exception as e:
-                        logger.error(f'notification: {e.message}')
+                        await logger.error(f'notification: {e.message}')
                     
                     # user.total_value.append(models.TotalValue(usd_value=total_usd))
                     await update_user(user_collection, user, {'last_update': int(datetime.now().timestamp())})
                 
                 if result.errors:
-                    [logger.error(error.message) for error in result.errors if hasattr(error, 'message')]
+                    [await logger.error(error.message) for error in result.errors if hasattr(error, 'message')]
         
         except Exception as e:
-            logger.error(e)
+            await logger.error(e)
         
         while (datetime.now() - start).seconds < 60:
             user = await user_collection.find_one({'_id': user['_id']})
