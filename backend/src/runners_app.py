@@ -28,6 +28,7 @@ from bson           import ObjectId
 from datetime       import datetime
 from multiprocessing import Process
 import background_process
+from async_mongo_logger import Logger
 
 tasks = {}
 
@@ -84,8 +85,11 @@ async def on_startup():
     for user in users:
         _id = ObjectId(user['_id'])
         await client.trader.users.update_one({'_id': _id}, {'$set': {'loop_state': 'stopped'}}, upsert=True)
-
+    
+    logger = Logger(name='coin_gecko', client=client, database='logs', collection='trader', log_to_console=True)
+    await logger.info('Set all loops to stopped')
     tasks['gecko'] = asyncio.ensure_future(background_process.coin_gecko())
+    await logger.info('Started tasks')
 
 def on_shutdown():
     pass

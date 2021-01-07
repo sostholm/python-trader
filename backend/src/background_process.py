@@ -27,7 +27,7 @@ async def update_coins(collection, updates):
 async def coin_gecko():
 
     client = get_client(asyncio.get_running_loop())
-    logger = Logger(name=__name__, client=client, database='logs', collection='trader')
+    logger = Logger(name='coin_gecko', client=client, database='logs', collection='trader', log_to_console=True)
     gecko_collection = client.trader.coin_gecko
     coin_gecko = await gecko_collection.find_one({})
     coins_collection = client.trader.coins
@@ -87,7 +87,7 @@ async def background_user_sync(app, user):
  
     loop = asyncio.get_running_loop()
     client = get_client(loop)
-    logger = Logger(name=__name__, client=client, database='logs', collection='trader')
+    logger = Logger(name='background_user_sync', client=client, database='logs', collection='trader', log_to_console=True)
     user_collection = client.trader.users
     user = await user_collection.find_one({'_id': ObjectId(user['_id'])})
 
