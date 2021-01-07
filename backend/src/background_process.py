@@ -14,9 +14,8 @@ import time
 from util               import process_to_lower_with_underscore
 from web_push           import send_web_push
 
-import logging
+from async_mongo_logger import Logger
 import sys
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 async def update_gecko(collection, gecko, update):
     return await collection.update_one({'_id': gecko['_id']}, {'$set': update} , upsert=False)
@@ -28,6 +27,7 @@ async def update_coins(collection, updates):
 async def coin_gecko():
 
     client = get_client(asyncio.get_running_loop())
+    logger = Logger(name=__name__, client=client, database='logs', collection='trader')
     gecko_collection = client.trader.coin_gecko
     coin_gecko = await gecko_collection.find_one({})
     coins_collection = client.trader.coins
@@ -35,7 +35,7 @@ async def coin_gecko():
     await update_gecko(gecko_collection, coin_gecko, {'loop_state':'running'})
     coin_gecko = await gecko_collection.find_one({})
 
-    print('starting coin gecko sync...')
+    logger.info('starting coin gecko sync...')
 
     
     while coin_gecko['loop_state'] == 'running':
@@ -83,15 +83,15 @@ async def update_user(collection, user, update, method='$set'):
     return await collection.update_one({'_id': user['_id']}, {method: update} , upsert=False)
 
 async def background_user_sync(app, user):
-    log = logging.getLogger(f'background_user_sync: {user["_id"]}')
     user_with_decrypted_keys = user
  
     loop = asyncio.get_running_loop()
     client = get_client(loop)
+    logger = Logger(name=__name__, client=client, database='logs', collection='trader')
     user_collection = client.trader.users
     user = await user_collection.find_one({'_id': ObjectId(user['_id'])})
 
-    log.info(f'starting background sync for {user["username"]}')
+    logger.info(f'starting background sync for {user["username"]}')
     
     await update_user(user_collection, user, {'loop_state': "running"})
 
@@ -134,63 +134,19 @@ async def background_user_sync(app, user):
                     
                     total_usd = sum([float(currency['usd']) for exchange in result.data.values() if exchange['balance'] for currency in exchange['balance']])
                     
-                    for currency in balance:
-                        
-                        if currency['priceChangePercentage1hInCurrency']:
-                            try:
-                                change = float(currency['priceChangePercentage1hInCurrency'])
-
-                                if change > 4.5 or change < -4.5:
-                                    if (
-                                            isinstance(user['events'], list) and 
-                                            list(filter(lambda x: x['currency'] == currency['currency'] and x['date'] == datetime.now().strftime("%Y%m%d") and x['type'] == 'priceChangePercentage1hInCurrency', user['events']))
-                                    ):
-                                        #If an entry for this event exists, skip
-                                        continue
-                                    
-                                    if user['subscription']:
-                                        try:
-                                            send_web_push(user['subscription'], f'{currency["currency"]} is up by {change} 1h')
-                                            event = {'currency': currency['currency'], 'date': datetime.now().strftime("%Y%m%d"), 'type': 'priceChangePercentage1hInCurrency'}
-                                            await update_user(user_collection, user, {'events': event}, '$push')
-                                            log.info(f'event sent for {event}')
-                                        except Exception as e:
-                                            log.error(e)
-                            except TypeError as e:
-                                log.error(f'Unable to convert priceChangePercentage1hInCurrency for {currency["currency"]}')
-                        
-                        if currency['priceChangePercentage24hInCurrency']:
-                            try:
-                                change = float(currency['priceChangePercentage24hInCurrency'])
-
-                                if change > 4.5 or change < -4.5:
-                                    if (
-                                            isinstance(user['events'], list) and 
-                                            list(filter(lambda x: x['currency'] == currency['currency'] and x['date'] == datetime.now().strftime("%Y%m%d") and x['type'] == 'priceChangePercentage24hInCurrency', user['events']))
-                                    ):
-                                        #If an entry for this event exists, skip
-                                        continue
-                                    
-                                    if user['subscription']:
-                                        try:
-                                            send_web_push(user['subscription'], f'{currency["currency"]} is up by {change} 24h')
-                                            event = {'currency': currency['currency'], 'date': datetime.now().strftime("%Y%m%d"), 'type': 'priceChangePercentage24hInCurrency'}
-                                            await update_user(user_collection, user, {'events': event}, '$push')
-                                            log.info(f'event sent for {event}')
-                                        except Exception as e:
-                                            log.error(e)
-
-                            except TypeError as e:
-                                log.error(f'Unable to convert priceChangePercentage24hInCurrency for {currency["currency"]}')
-
-
+                    try:
+                        await handle_notifications(user_collection=user_collection, user=user, balance=balance)
+                    except Exception as e:
+                        logger.error(f'notification: {e.message}')
+                    
                     # user.total_value.append(models.TotalValue(usd_value=total_usd))
                     await update_user(user_collection, user, {'last_update': int(datetime.now().timestamp())})
                 
                 if result.errors:
-                    [log.error(error.message) for error in result.errors if hasattr(error, 'message')]
+                    [logger.error(error.message) for error in result.errors if hasattr(error, 'message')]
+        
         except Exception as e:
-            log.error(e)
+            logger.error(e)
         
         while (datetime.now() - start).seconds < 60:
             user = await user_collection.find_one({'_id': user['_id']})
@@ -198,12 +154,69 @@ async def background_user_sync(app, user):
                 break
             time.sleep(5)
     
-
     await update_user(user_collection, user, {'loop_state': "stopped"})
     
         
-        
+async def handle_notifications(user_collection, user, balance):
+    up_1h       = []
+    down_1h     = []
+    up_24h      = []
+    down_24h    = []
+    
+    for currency in balance:
+        if currency['priceChangePercentage1hInCurrency']:
+            change = float(currency['priceChangePercentage1hInCurrency'])
 
+            if change > 5 or change < -5:
+                if (
+                        isinstance(user['events'], list) and 
+                        list(filter(lambda x: x['currency'] == currency['currency'] and x['date'] == datetime.now().strftime("%Y%m%d") and x['type'] == 'priceChangePercentage1hInCurrency', user['events']))
+                ):
+                    #If an entry for this event exists, skip
+                    continue
+                
+                elif change > 5:
+                    up_1h.append(currency["currency"])
+                else:
+                    down_1h.append(currency["currency"])
+        
+        if currency['priceChangePercentage24hInCurrency']:
+            change = float(currency['priceChangePercentage24hInCurrency'])
+
+            if change > 10 or change < -10:
+                if (
+                        isinstance(user['events'], list) and 
+                        list(filter(lambda x: x['currency'] == currency['currency'] and x['date'] == datetime.now().strftime("%Y%m%d") and x['type'] == 'priceChangePercentage24hInCurrency', user['events']))
+                ):
+                    #If an entry for this event exists, skip
+                    continue
+                
+                elif change > 10:
+                    up_24h.append(currency["currency"])
+                else:
+                    down_24h.append(currency["currency"])
+
+        if user['subscription']:
+
+            message = ""
+            if up_1h:
+                message += f'{",".join(up_1h)} is up > 5% in 1h'
+            if down_1h:
+                message += f'{",".join(down_1h)} is down < -5% in 1h'
+            if up_24h:
+                message += f'{",".join(up_24h)} is up < 10% in 24h'
+            if down_24h:
+                message += f'{",".join(down_24h)} is down < -10% in 24h'
+
+            send_web_push(user['subscription'], message)
+
+            async for currency in up_1h + down_1h:
+                event = {'currency': currency['currency'], 'date': datetime.now().strftime("%Y%m%d"), 'type': 'priceChangePercentage1hInCurrency'}
+                await update_user(user_collection, user, {'events': event}, '$push')
+
+            async for currency in up_24h + down_24h:
+                event = {'currency': currency['currency'], 'date': datetime.now().strftime("%Y%m%d"), 'type': 'priceChangePercentage24hInCurrency'}
+                await update_user(user_collection, user, {'events': event}, '$push')
             
 #         {
 #   "bitcoin": {
