@@ -48,13 +48,14 @@ async def user_loop(request):
         results = await trader_database.users.find_one({'_id': ObjectId(user['_id'])}, {'loop_state': True})
         state = results['loop_state']
 
-        while state != 'running' or (start - datetime.now()).seconds > 10:
+        while (start - datetime.now()).seconds < 10:
 
             results = await trader_database.users.find_one({'_id': ObjectId(user['_id'])}, {'loop_state': True})
             state = results['loop_state']
 
             if state != 'running':
-                await asyncio.sleep(0.5)
+                break
+            await asyncio.sleep(0.5)
 
     return Response()
 

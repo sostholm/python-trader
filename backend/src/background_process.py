@@ -210,12 +210,12 @@ async def handle_notifications(user_collection, user, balance):
 
             send_web_push(user['subscription'], message)
 
-            async for currency in up_1h + down_1h:
-                event = {'currency': currency['currency'], 'date': datetime.now().strftime("%Y%m%d"), 'type': 'priceChangePercentage1hInCurrency'}
+            for currency in up_1h + down_1h:
+                event = {'currency': currency, 'date': datetime.now().strftime("%Y%m%d"), 'type': 'priceChangePercentage1hInCurrency'}
                 await update_user(user_collection, user, {'events': event}, '$push')
 
-            async for currency in up_24h + down_24h:
-                event = {'currency': currency['currency'], 'date': datetime.now().strftime("%Y%m%d"), 'type': 'priceChangePercentage24hInCurrency'}
+            for currency in up_24h + down_24h:
+                event = {'currency': currency, 'date': datetime.now().strftime("%Y%m%d"), 'type': 'priceChangePercentage24hInCurrency'}
                 await update_user(user_collection, user, {'events': event}, '$push')
             
 #         {
