@@ -135,7 +135,7 @@ async def background_user_sync(app, user):
                     total_usd = sum([float(currency['usd']) for exchange in result.data.values() if exchange['balance'] for currency in exchange['balance']])
                     
                     try:
-                        await handle_notifications(user_collection=user_collection, user=user, balance=balance)
+                        await handle_notifications(user=user, balance=balance, client=client)
                     except Exception as e:
                         await logger.error(f'notification: {e.message}')
                     
@@ -157,21 +157,23 @@ async def background_user_sync(app, user):
     await update_user(user_collection, user, {'loop_state': "stopped"})
     
         
-async def handle_notifications(user_collection, user, balance):
+async def handle_notifications(user, balance, client):
     up_1h       = []
     down_1h     = []
     up_24h      = []
     down_24h    = []
+    date        = datetime.now().strftime("%Y%m%d")
+    events_collection = client.trader.events
     
+
     for currency in balance:
+        
         if currency['priceChangePercentage1hInCurrency']:
             change = float(currency['priceChangePercentage1hInCurrency'])
-
+            
             if change > 5 or change < -5:
-                if (
-                        isinstance(user['events'], list) and 
-                        list(filter(lambda x: x['currency'] == currency['currency'] and x['date'] == datetime.now().strftime("%Y%m%d") and x['type'] == 'priceChangePercentage1hInCurrency', user['events']))
-                ):
+                event = await events_collection.find_one({'currency': currency['currency'], 'user': ObjectId(user['_id']), 'date': date, 'type': 'priceChangePercentage1hInCurrency'})
+                if event:
                     #If an entry for this event exists, skip
                     continue
                 
@@ -184,10 +186,8 @@ async def handle_notifications(user_collection, user, balance):
             change = float(currency['priceChangePercentage24hInCurrency'])
 
             if change > 10 or change < -10:
-                if (
-                        isinstance(user['events'], list) and 
-                        list(filter(lambda x: x['currency'] == currency['currency'] and x['date'] == datetime.now().strftime("%Y%m%d") and x['type'] == 'priceChangePercentage24hInCurrency', user['events']))
-                ):
+                event = await events_collection.find_one({'currency': currency['currency'], 'user': ObjectId(user['_id']), 'date': date, 'type': 'priceChangePercentage24hInCurrency'})
+                if event:
                     #If an entry for this event exists, skip
                     continue
                 
@@ -208,15 +208,16 @@ async def handle_notifications(user_collection, user, balance):
             if down_24h:
                 message += f'{",".join(down_24h)} is down < -10% in 24h'
 
-            send_web_push(user['subscription'], message)
+            if message:
+                send_web_push(user['subscription'], message)
 
-            for currency in up_1h + down_1h:
-                event = {'currency': currency, 'date': datetime.now().strftime("%Y%m%d"), 'type': 'priceChangePercentage1hInCurrency'}
-                await update_user(user_collection, user, {'events': event}, '$push')
+                for currency in up_1h + down_1h:
+                    event = {'currency': currency, 'date': datetime.now().strftime("%Y%m%d"), 'type': 'priceChangePercentage1hInCurrency'}
+                    await events_collection.insert_one({'currency': currency, 'user': ObjectId(user['_id']), 'date': date, 'type': 'priceChangePercentage1hInCurrency'})
 
-            for currency in up_24h + down_24h:
-                event = {'currency': currency, 'date': datetime.now().strftime("%Y%m%d"), 'type': 'priceChangePercentage24hInCurrency'}
-                await update_user(user_collection, user, {'events': event}, '$push')
+                for currency in up_24h + down_24h:
+                    event = {'currency': currency, 'date': datetime.now().strftime("%Y%m%d"), 'type': 'priceChangePercentage24hInCurrency'}
+                    await events_collection.insert_one({'currency': currency, 'user': ObjectId(user['_id']), 'date': date, 'type': 'priceChangePercentage24hInCurrency'})
             
 #         {
 #   "bitcoin": {
