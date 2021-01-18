@@ -2,6 +2,7 @@ import React, {useState, useEffect} from 'react'
 import { makeStyles } from '@material-ui/core/styles'
 import { HorizontalBar } from 'react-chartjs-2'
 import UserHeartbeat from 'components/user-heartbeat'
+import BalanceList from 'components/balance-list'
 import {colors} from 'components/random-color'
 import { useQuery, gql } from '@apollo/client'
 
@@ -23,10 +24,15 @@ const useStyles = makeStyles((theme) => ({
 const MY_BALANCE = gql`
 query{
     me{
+      portfolioValue
       portfolio{
         currency
         total
         usd
+        coinId
+        priceChangePercentage1hInCurrency
+        priceChangePercentage24hInCurrency
+        priceChangePercentage7dInCurrency
       }
     }
   }
@@ -35,7 +41,7 @@ query{
 export default function Balance(props){
     const [balances, setBalances] = useState()
     const [usd, setUsd] = useState()
-    const [doughnut, setDoughnut] = useState()
+    const [listData, setlistData] = useState()
     const classes = useStyles()
     const { loading, error, data } = useQuery(MY_BALANCE, {
         pollInterval: 10000,
@@ -43,27 +49,15 @@ export default function Balance(props){
 
     useEffect(() => {
         if (data){
-            let total_usd = 0
             const above_1 = Object.values(data.me.portfolio).filter(currency => parseFloat(currency.usd) > 1)
-            Object.values(above_1).map(currency =>  total_usd += parseFloat(currency.usd))
-
-            let currencies = {} 
-            Object.values(above_1).map(currency =>  currencies[currency.currency] = 0)
-            Object.values(above_1).map(currency =>  currencies[currency.currency] += parseFloat(currency.usd))
-
-            currencies = Object.keys(currencies).map(key => [key, currencies[key]])
-            currencies.sort((a,b) => (a[1] > b[1]) ? 1 : ((b[1] > a[1]) ? -1 : 0)).reverse()
-
-            setDoughnut( {
-                datasets: [{
-                    data: currencies.map(arr =>  arr[1]),
-                    backgroundColor: Object.values(above_1).map((currency, index) => colors[index]),
-                    label: 'Value in USD'
-                }],
-                // These labels appear in the legend and in the tooltips when hovering different arcs
-                labels: currencies.map(arr =>  arr[0])
-            })
-            setUsd(total_usd)
+            above_1.sort((a,b) => (a['usd'] > b['usd']) ? 1 : ((b['usd'] > a['usd']) ? -1 : 0)).reverse()
+            setlistData(above_1.map(currency =>  {
+              return {
+                portfolio_percentage: currency['usd']/data.me.portfolioValue * 100,
+                ...currency
+              }
+            }))
+            setUsd(data.me.portfolioValue)
         }
     }, [data])
 
@@ -74,7 +68,7 @@ export default function Balance(props){
         <div className={classes.root}>
             <UserHeartbeat />
             <div>{usd}</div>
-            <HorizontalBar width={"90%"} data={doughnut} />
+            <BalanceList data={listData} />
         </div>
     )
 }

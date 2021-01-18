@@ -14,6 +14,30 @@ def process_to_lower_with_underscore(fields):
     
     return new_fields
 
+def aggregate_balance(balances):
+    symbols = set(b['coin_id'] for b in balances)
+    out_array = []
+    for symbol in symbols:
+        same = list(filter(lambda x: x['coin_id'] == symbol, balances))
+        out_dict = same.pop()
+
+        out_dict['exchanges'] = [out_dict['exchange']]
+        del(out_dict['exchange'])
+
+        out_dict['total']       = float(out_dict['total'])
+        out_dict['usd']         = float(out_dict['usd'])
+        out_dict['available']   = float(out_dict['available'])
+        for s in same:
+            out_dict['total']       += float(s['total'])
+            out_dict['usd']         += float(s['usd'])
+            out_dict['available']   += float(s['available'])
+            
+            if s['exchange'] not in out_dict['exchanges']:
+                out_dict['exchanges'].append(s['exchange'])
+
+        out_array.append(out_dict)
+    return out_array
+
 @retry(5, 2)
 def get_secret(secret_name):
     try:

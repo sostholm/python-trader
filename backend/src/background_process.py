@@ -11,7 +11,7 @@ import asyncio
 import requests
 import time
 
-from util               import process_to_lower_with_underscore
+from util               import process_to_lower_with_underscore, aggregate_balance
 from web_push           import send_web_push
 
 from async_mongo_logger import Logger
@@ -73,8 +73,10 @@ def create_exchange_balance_query(exchange):
       total
       available
       usd
+      coinId
       priceChangePercentage1hInCurrency
-      priceChangePercentage24hInCurrency 
+      priceChangePercentage24hInCurrency
+      priceChangePercentage7dInCurrency
     }
   } 
 '''
@@ -128,11 +130,10 @@ async def background_user_sync(app, user):
                                 entry['exchange'] = key 
                                 balance.append(entry)
                                 updates.append(process_to_lower_with_underscore(entry))
-
-                    await update_user(user_collection, user, {'portfolio': updates})
-
                     
                     total_usd = sum([float(currency['usd']) for exchange in result.data.values() if exchange['balance'] for currency in exchange['balance']])
+                    updates = aggregate_balance(updates)
+                    await update_user(user_collection, user, {'portfolio': updates, 'portfolio_value': total_usd})
                     
                     try:
                         await handle_notifications(user=user, balance=balance, client=client)
@@ -219,8 +220,3 @@ async def handle_notifications(user, balance, client):
                 event = {'currency': currency, 'date': datetime.now().strftime("%Y%m%d"), 'type': 'priceChangePercentage24hInCurrency'}
                 await events_collection.insert_one({'currency': currency, 'user': ObjectId(user['_id']), 'date': date, 'type': 'priceChangePercentage24hInCurrency'})
             
-#         {
-#   "bitcoin": {
-#     "usd": 11720.89
-#   }
-# }

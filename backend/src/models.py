@@ -108,38 +108,39 @@ class Order(graphene.ObjectType):
     all_details = graphene.JSONString()
     exchange    = Field(Exchange)
 
-# class CoinGeckoCoin(Document):
-#     id                              = StringField(),
-#     symbol                          = StringField(),
-#     name                            = StringField(),
-#     image                           = StringField(),
-#     current_price                   = FloatField(),
-#     market_cap                      = FloatField(),
-#     market_cap_rank                 = IntField(),
-#     fully_diluted_valuation         = IntField(),
-#     total_volume                    = IntField(),
-#     high_24h                        = FloatField(),
-#     low_24h                         = FloatField(),
-#     price_change_24h                = FloatField(),
-#     price_change_percentage_24h     = FloatField(),
-#     market_cap_change_24h           = IntField(),
-#     market_cap_change_percentage_24h= FloatField(),
-#     circulating_supply              = IntField(),
-#     total_supply                    = IntField(),
-#     max_supply                      = IntField(),
-#     ath                             = FloatField(),
-#     ath_change_percentage           = FloatField(),
-#     ath_date                        = DateTimeField(),
-#     atl                             = FloatField(),
-#     atl_change_percentage           = FloatField(),
-#     atl_date                        = DateTimeField(),
-#     roi                             = DictField(default={}),
-#     last_updated                    = DateTimeField()
-#     price_change_percentage_14d_in_currency     = FloatField(),
-#     price_change_percentage_1h_in_currency      = FloatField(),
-#     price_change_percentage_24h_in_currency     = FloatField(),
-#     price_change_percentage_30d_in_currency     = FloatField(),
-#     price_change_percentage_7d_in_currency      = FloatField()
+class CoinGeckoCoin(Document):
+    id                              = StringField(),
+    symbol                          = StringField(),
+    name                            = StringField(),
+    image                           = StringField(),
+    current_price                   = FloatField(),
+    market_cap                      = FloatField(),
+    market_cap_rank                 = IntField(),
+    fully_diluted_valuation         = IntField(),
+    total_volume                    = IntField(),
+    high_24h                        = FloatField(),
+    low_24h                         = FloatField(),
+    price_change_24h                = FloatField(),
+    price_change_percentage_24h     = FloatField(),
+    market_cap_change_24h           = IntField(),
+    market_cap_change_percentage_24h= FloatField(),
+    circulating_supply              = IntField(),
+    total_supply                    = IntField(),
+    max_supply                      = IntField(),
+    ath                             = FloatField(),
+    ath_change_percentage           = FloatField(),
+    ath_date                        = DateTimeField(),
+    atl                             = FloatField(),
+    atl_change_percentage           = FloatField(),
+    atl_date                        = DateTimeField(),
+    roi                             = DictField(default={}),
+    last_updated                    = DateTimeField()
+    price_change_percentage_14d_in_currency     = FloatField(),
+    price_change_percentage_1h_in_currency      = FloatField(),
+    price_change_percentage_24h_in_currency     = FloatField(),
+    price_change_percentage_30d_in_currency     = FloatField(),
+    price_change_percentage_7d_in_currency      = FloatField()
+
 class State(Enum):
     start   = 1
     running = 2
@@ -178,13 +179,15 @@ class Event(ObjectType):
     type     = String()
 
 class UserBalance(ObjectType):
-    currency                            = String()
-    total                               = Float()
-    available                           = Float()
-    usd                                 = Float()
-    priceChangePercentage1hInCurrency   = Float()
-    priceChangePercentage24hInCurrency  = Float()
-    exchange                            = String()
+    currency                                = String()
+    coin_id                                 = String()
+    total                                   = Float()
+    available                               = Float()
+    usd                                     = Float()
+    price_change_percentage1h_in_currency   = Float()
+    price_change_percentage24h_in_currency  = Float()
+    price_change_percentage7d_in_currency   = Float()
+    exchange                                = String()
 
 class User(ObjectType):
     # meta            = {'collection': 'users'}
@@ -197,6 +200,7 @@ class User(ObjectType):
     accounts        = List(Account)
     wallets         = List(Wallet)
     events          = List(Event)
+    portfolio_value = Float()
 
 # class TotalValue(ObjectType):
 #     timestamp       = DateTime()

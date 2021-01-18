@@ -8,7 +8,7 @@ import exchanges
 # from models import Position as PositionNode
 # from models import Order as OrderNode
 # from models import User
-from models import Exchange, WalletType, User, CoinGecko
+from models import Exchange, WalletType, User, CoinGecko, CoinGeckoCoin
 # from database import client
 from exchanges import AddBittrexOrder
 # from mutations import AddUser, AddPosition, AddOrder
@@ -35,6 +35,7 @@ class Query(graphene.ObjectType):
     # wallets     = graphene.List(WalletNode, args={'id': graphene.String()})
     exchanges   = graphene.List(Exchange)
     wallet_types= graphene.List(WalletType)
+    # coins       = graphene.List(CoinGeckoCoin, args={'id': graphene.List(graphene.String)})
     me          = graphene.Field(User)
     bittrex     = graphene.Field(Bittrex)
     crypto_cdc  = graphene.Field(Cdc)
@@ -76,6 +77,12 @@ class Query(graphene.ObjectType):
         async for document in info.context['request'].app.mongo.trader.exchanges.find({}, fields):
             result.append(document)
         return result
+
+    # async def resolve_coins(self, info):
+    #     fields = get_projection(info, True)
+    #     result = []
+    #     # async for document in info.context['request'].app.mongo.trader.coins.find_one({}, fields)
+    #     return result
 
     async def resolve_wallet_types(self, info):
         fields = get_projection(info, True)
