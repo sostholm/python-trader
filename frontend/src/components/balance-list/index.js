@@ -12,16 +12,22 @@ const useStyles = createUseStyles({
     },
     row_root: {
         display: 'grid',
-        gridTemplateColumns:    '1fr 1fr 1fr 1fr',
-        gridTemplateRows:       '1fr 1fr 10px',
+        gridTemplateColumns:    '1fr 2fr 1fr',
+        gridTemplateRows:       '1fr 1fr',
         gridTemplateAreas: `
-        'icon table table percent'
-        '.  table table percent'
-        'line line line line'
+        'icon table percent'
+        'icon  table percent'
         `
        ,
-        height: 'fit-content'
+        height: 'fit-content',
+        marginTop: '.5rem',
+        // background: 'rgba(50,100,50,.5',
+        border: '1px solid rgba(100,100,200,.5)',
+        boxSizing: 'border-box',
+        padding: '.5rem',
+        backgroundColor: 'rgba(100,100,200,.4)',
     },
+    
     row_top: {
         display: 'flex',
     },
@@ -41,16 +47,22 @@ const useStyles = createUseStyles({
     },
     icon:{
         display: 'flex',
-        alignContent: 'center',
+        justifyContent: 'space-evenly',
         alignItems: 'center',
         gridArea: 'icon',
     },
     percentage: {
         gridArea: 'percent',
+        fontWeight: 700
     },
     table:{
         gridArea: 'table',
+        display: 'grid',
+        gridTemplateColumns:    '1fr 1fr 1fr',
+        gridTemplateRows:       '1fr 1fr',
         fontSize: '1rem',
+        alignmContent: 'center',
+        alignItems: 'center'
     },
     divider: {
         gridArea: 'line',
@@ -73,23 +85,13 @@ export default function BalanceList(props) {
                     </div>
                     
                     <span className={classes.percentage}>{`${Math.round(props.portfolio_percentage, 2)}%`}</span>
-                    {/* <div style={{gridArea: 'header1'}}>1h%</div>
-                    <div style={{gridArea: 'header24'}}>24h%</div>
-                    <div style={{gridArea: 'header7'}}>7d%</div> */}
                     <div className={classes.table}>
-                        <table>
-                            <tr>
-                                <th>1h</th>
-                                <th>24h</th>
-                                <th>7d</th>
-                            </tr>
-                            <tr>
-                                <td>{`${Math.round(props.priceChangePercentage1hInCurrency, 2)}%`}</td>
-                                <td>{`${Math.round(props.priceChangePercentage24hInCurrency, 2)}%`}</td>
-                                <td>{`${Math.round(props.priceChangePercentage7dInCurrency, 2)}%`}</td>
-                            </tr>
-                        </table>
-                        {}
+                        <div>1h</div>
+                        <div>24h</div>
+                        <div>7d</div>
+                        <div>{`${Math.round(props.priceChangePercentage1hInCurrency, 2)}%`}</div>
+                        <div>{`${Math.round(props.priceChangePercentage24hInCurrency, 2)}%`}</div>
+                        <div>{`${Math.round(props.priceChangePercentage7dInCurrency, 2)}%`}</div>
                     </div>
                     <div className={classes.divider} />
                 </div>
