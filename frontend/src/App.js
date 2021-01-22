@@ -19,6 +19,7 @@ import Settings from 'components/settings'
 import Drawer from 'components/drawer'
 import Carousel from 'views/carousel'
 import { API_URL, refresh_token } from 'services'
+import jwt from 'jsonwebtoken'
 
 const darkTheme = createMuiTheme({
   palette: {
@@ -50,11 +51,17 @@ function App() {
     const httpLink = createHttpLink({
       uri: API_URL + '/graphql',
     });
-    
+
     const authLink = setContext((_, { headers }) => {
       // get the authentication token from local storage if it exists
       // const token = localStorage.getItem('token');
       // return the headers to the context so httpLink can read them
+
+      const decoded = jwt.decode(fed_token)
+      if (new Date(1611350153 * 1000) - 10000 < new Date()) {
+        const new_token = refresh_token(token).then(new_token => setToken(new_token))
+      }
+
       return {
         headers: {
           ...headers,
@@ -71,19 +78,19 @@ function App() {
           }
         }
       }
-      if (networkError){
-        if(networkError.bodyText === 'Signature has expired') logout()
+      if (networkError) {
+        if (networkError.bodyText === 'Signature has expired') logout()
         else console.log(`[Network error]: ${networkError}`)
-      } 
+      }
     })
-    
+
     return new ApolloClient({
       link: authLink.concat(errorLink).concat(httpLink),
       cache: new InMemoryCache()
     });
   }
 
-  
+
 
   const update_token = async () => {
     const new_token = await refresh_token(token)

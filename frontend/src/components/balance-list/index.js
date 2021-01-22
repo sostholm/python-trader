@@ -53,7 +53,8 @@ const useStyles = createUseStyles({
     },
     percentage: {
         gridArea: 'percent',
-        fontWeight: 700
+        fontWeight: 700,
+        fontSize: '2rem'
     },
     table:{
         gridArea: 'table',
@@ -75,6 +76,8 @@ const useStyles = createUseStyles({
 export default function BalanceList(props) {
     const classes = useStyles()
 
+    const red_or_green = val => val > 0 ? 'rgba(100, 200, 100, .8)' : 'rgba(200, 100, 100, .8)' 
+
     const Row = props => {
         return (
             props && <div>
@@ -89,9 +92,9 @@ export default function BalanceList(props) {
                         <div>1h</div>
                         <div>24h</div>
                         <div>7d</div>
-                        <div>{`${Math.round(props.priceChangePercentage1hInCurrency, 2)}%`}</div>
-                        <div>{`${Math.round(props.priceChangePercentage24hInCurrency, 2)}%`}</div>
-                        <div>{`${Math.round(props.priceChangePercentage7dInCurrency, 2)}%`}</div>
+                        <div style={{color: red_or_green(props.priceChangePercentage1hInCurrency)}}>{`${Math.round(props.priceChangePercentage1hInCurrency, 2)}%`}</div>
+                        <div style={{color: red_or_green(props.priceChangePercentage24hInCurrency)}}>{`${Math.round(props.priceChangePercentage24hInCurrency, 2)}%`}</div>
+                        <div style={{color: red_or_green(props.priceChangePercentage7dInCurrency)}}>{`${Math.round(props.priceChangePercentage7dInCurrency, 2)}%`}</div>
                     </div>
                     <div className={classes.divider} />
                 </div>
