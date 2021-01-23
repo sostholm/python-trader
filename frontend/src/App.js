@@ -58,8 +58,8 @@ function App() {
       // return the headers to the context so httpLink can read them
 
       const decoded = jwt.decode(fed_token)
-      if (new Date(1611350153 * 1000) - 10000 < new Date()) {
-        const new_token = refresh_token(token).then(new_token => setToken(new_token))
+      if (new Date(decoded.exp * 1000) - 120000 < new Date()) {
+        refresh_token(token).then(new_token => fed_token = new_token)
       }
 
       return {
