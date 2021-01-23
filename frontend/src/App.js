@@ -15,6 +15,7 @@ import AddAccount from 'components/add-account'
 import AddWallet from 'components/add-wallet'
 import AddToken from 'components/add-token'
 import Balance from 'components/balance'
+import Coin from 'components/coin'
 import Settings from 'components/settings'
 import Drawer from 'components/drawer'
 import Carousel from 'views/carousel'
@@ -39,6 +40,7 @@ const views = [
 function App() {
   const [token, setToken] = useState()
   const [client, setClient] = useState()
+  const [item, setItem] = useState()
   const [loggedIn, setLoggedIn] = useState(false)
   const [view, setView] = useState('Login')
   const [gqlLink, setGQLLink] = useState(false)
@@ -53,14 +55,6 @@ function App() {
     });
 
     const authLink = setContext((_, { headers }) => {
-      // get the authentication token from local storage if it exists
-      // const token = localStorage.getItem('token');
-      // return the headers to the context so httpLink can read them
-
-      const decoded = jwt.decode(fed_token)
-      if (new Date(decoded.exp * 1000) - 120000 < new Date()) {
-        refresh_token(token).then(new_token => fed_token = new_token)
-      }
 
       return {
         headers: {
@@ -90,35 +84,6 @@ function App() {
     });
   }
 
-
-
-  const update_token = async () => {
-    const new_token = await refresh_token(token)
-    setToken(new_token)
-  }
-
-  useEffect(() => {
-    if (loggedIn) {
-      const interval = setInterval(() => {
-        update_token()
-      }, 15 * 60 * 1000);
-      return () => clearInterval(interval);
-    }
-  }, [loggedIn]);
-
-  // }, [])
-
-  // useEffect(() => {
-  //   if (token) {
-  //     const now = parseInt((new Date).getTime() / 1000)
-  //     const exp = jwt_decode(token).exp
-  //     if (exp < now) {
-  //       logout()
-  //     }
-  //   }
-  //   else if (!token && view !== 'Login') setView('Login')
-  // }, [token])
-
   useEffect(() => {
     if (!loggedIn && view !== 'Login') {
       setView('Login')
@@ -146,8 +111,9 @@ function App() {
 
           {client && <ApolloProvider client={client}>
             {<Drawer views={views} setView={setView} logout={logout} />}
-            {loggedIn && view === 'Balance' && <Balance />}
-            {loggedIn && view == 'Settings' && <Settings />}
+            {loggedIn && view === 'Balance' &&  <Balance />}
+            {loggedIn && view == 'Settings' &&  <Settings />}
+            {loggedIn && view == 'Coin' &&      <Coin />}
             {/* <button onClick={displayNotification}>Display Notification</button> */}
             {/* <Carousel> */}
 

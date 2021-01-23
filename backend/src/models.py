@@ -194,7 +194,7 @@ class User(ObjectType):
     username        = String()
     password        = String()
     last_update     = Int()
-    portfolio       = List(UserBalance)
+    portfolio       = List(UserBalance, coin_id=graphene.String())
     subscription    = JSONString()
     loop_state      = String()
     accounts        = List(Account)
