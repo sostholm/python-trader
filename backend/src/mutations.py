@@ -25,7 +25,7 @@ class AddUser(graphene.Mutation):
             username    = input['username'],
             password    = bcrypt.hashpw(input['password'].encode(), bcrypt.gensalt(12)).decode('utf-8'),
         )
-        await info.context['client'].trader.users.insert_one(user)
+        await info.context['request'].app.mongo.trader.users.insert_one(user)
         return AddUser(user=user)
 
 class AddCoinGecko(graphene.Mutation):
@@ -55,7 +55,7 @@ class AddAccount(graphene.Mutation):
             api_key     = password_encrypt(message=input['api_key'].encode('utf-8'), password=input['password']).decode('utf-8'),
             secret      = password_encrypt(message=input['secret'].encode('utf-8'), password=input['password']).decode('utf-8')
         )
-        await info.context['client'].trader.users.update_one({'_id': ObjectId(id)}, {'$push': {'account': account}})
+        await info.context['request'].app.mongo.trader.users.update_one({'_id': ObjectId(id)}, {'$push': {'account': account}})
         return AddAccount(account=account)
 
 class AddWallet(graphene.Mutation):
@@ -77,7 +77,7 @@ class AddWallet(graphene.Mutation):
             wallet_type = ObjectId(wallet_type['_id'])
         )
         
-        await info.context['client'].trader.users.update_one({'_id': ObjectId(id)}, {'$push': {'wallet': wallet}})
+        await info.context['request'].app.mongo.trader.users.update_one({'_id': ObjectId(id)}, {'$push': {'wallet': wallet}})
         return AddWallet(wallet=wallet)
 
 class AddToken(graphene.Mutation):
@@ -91,7 +91,7 @@ class AddToken(graphene.Mutation):
     async def mutate(root, info, **input):
         id = info.context['request'].user.display_name
         
-        await info.context['client'].trader.users.update_one({'_id': ObjectId(id), 'wallets.name': input['wallet_name']}, {'$push': {'tokens': input['token']}})
+        await info.context['request'].app.mongo.trader.users.update_one({'_id': ObjectId(id), 'wallets.name': input['wallet_name']}, {'$push': {'wallets.$.tokens': input['token']}})
         return AddToken(token=input['token'])
 
 class AddPosition(graphene.Mutation):

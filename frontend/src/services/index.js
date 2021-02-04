@@ -1,5 +1,10 @@
-import { assert } from 'util'
-// import Dexie from 'dexie'
+import { ApolloClient, createHttpLink, InMemoryCache } from '@apollo/client'
+import { onError } from "@apollo/client/link/error"
+import { setContext } from '@apollo/client/link/context'
+
+const logout = () => {
+  window.location.reload()
+}
 
 let url
 if (process.env.NODE_ENV === 'development') url = 'http://localhost:8000'
@@ -37,6 +42,43 @@ mutation{
 export const refresh_token = async (old) => {
   const result = await fetcher(update_token(old), old)
   return result.data.updateToken.token
+}
+
+export function createGQL(token) {
+  const httpLink = createHttpLink({
+    uri: API_URL + '/graphql',
+  });
+
+  const authLink = setContext((_, { headers }) => {
+
+    return {
+      headers: {
+        ...headers,
+        authorization: token ? `Bearer ${token}` : "",
+      }
+    }
+  });
+
+  const errorLink = onError(({ graphQLErrors, networkError }) => {
+    if (graphQLErrors) {
+      for (let err of graphQLErrors) {
+        if(err.extensions && err.extensions.code == 'UNAUTHENTICATED') logout()
+        else{
+          alert(err.message)
+          console.log(err)
+        }
+      }
+    }
+    if (networkError) {
+      if (networkError.bodyText === 'Signature has expired') logout()
+      else console.log(`[Network error]: ${networkError}`)
+    }
+  })
+
+  return new ApolloClient({
+    link: authLink.concat(errorLink).concat(httpLink),
+    cache: new InMemoryCache()
+  });
 }
 
 export const user_balance = `

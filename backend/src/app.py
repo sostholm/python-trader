@@ -20,6 +20,7 @@ import os
 import time
 from models         import User, fetch
 from database       import get_client
+from util           import make_wallets, make_exchanges
 
 from schema         import Query
 from encrypt        import password_decrypt
@@ -47,23 +48,9 @@ async def login(request):
         raise Exception('Wrong Username/Password')
 
     user['password_decrypted'] = body['password']
-    user['exchanges'] = {}
-    for account in user['accounts']:
-        exchange_name = [e['name'] for e in exchanges if e['_id'] == account['exchange']][0]
-        user['exchanges'][exchange_name] = {
-            'api_key': password_decrypt(account['api_key'].encode('utf-8'), body['password']).decode('utf-8'),
-            'api_secret': password_decrypt(account['secret'].encode('utf-8'), body['password']).decode('utf-8')
-        }
-
-    wallets = {}
-    for wallet in user['wallets']:
-        wallet_type = [w['name'] for w in wallet_types if w['_id'] == wallet['wallet_type']][0]
-        wallets[wallet_type] = {
-            'address': wallet['address'],
-            'tokens': wallet['tokens']
-        }
-
-    user['wallets'] = wallets
+    
+    user['exchanges'] = make_exchanges(user, body['password'], exchanges)
+    user['wallets'] = make_wallets(user, wallet_types)
 
     if user['loop_state'] != 'running':
         try:

@@ -19,7 +19,7 @@ import Coin from 'components/coin'
 import Settings from 'components/settings'
 import Drawer from 'components/drawer'
 import Carousel from 'views/carousel'
-import { API_URL, refresh_token } from 'services'
+import { API_URL, refresh_token, createGQL } from 'services'
 import jwt from 'jsonwebtoken'
 
 const darkTheme = createMuiTheme({
@@ -37,52 +37,16 @@ const views = [
   { key: 'Settings', text: 'Settings' }
 ]
 
+const logout = () => {
+  window.location.reload()
+}
+
 function App() {
   const [token, setToken] = useState()
   const [client, setClient] = useState()
   const [item, setItem] = useState()
   const [loggedIn, setLoggedIn] = useState(false)
   const [view, setView] = useState('Login')
-  const [gqlLink, setGQLLink] = useState(false)
-
-  const logout = () => {
-    window.location.reload()
-  }
-
-  function createGQL(fed_token) {
-    const httpLink = createHttpLink({
-      uri: API_URL + '/graphql',
-    });
-
-    const authLink = setContext((_, { headers }) => {
-
-      return {
-        headers: {
-          ...headers,
-          authorization: fed_token ? `Bearer ${fed_token}` : "",
-        }
-      }
-    });
-
-    const errorLink = onError(({ graphQLErrors, networkError }) => {
-      if (graphQLErrors) {
-        for (let err of graphQLErrors) {
-          switch (err.extensions.code) {
-            case 'UNAUTHENTICATED': logout()
-          }
-        }
-      }
-      if (networkError) {
-        if (networkError.bodyText === 'Signature has expired') logout()
-        else console.log(`[Network error]: ${networkError}`)
-      }
-    })
-
-    return new ApolloClient({
-      link: authLink.concat(errorLink).concat(httpLink),
-      cache: new InMemoryCache()
-    });
-  }
 
   useEffect(() => {
     if (!loggedIn && view !== 'Login') {
@@ -113,15 +77,10 @@ function App() {
             {<Drawer views={views} setView={setView} logout={logout} />}
             {loggedIn && view === 'Balance' &&  <Balance />}
             {loggedIn && view == 'Settings' &&  <Settings />}
-            {loggedIn && view == 'Coin' &&      <Coin />}
-            {/* <button onClick={displayNotification}>Display Notification</button> */}
-            {/* <Carousel> */}
-
-            {/* {loggedIn && view === 'Add Account' && <AddAccount getQuery={get_query}/>}
-          {loggedIn && view === 'Add Wallet' && <AddWallet getQuery={get_query} />}
-          {loggedIn && view === 'Add Token' && <AddToken getQuery={get_query} />}
-          {loggedIn && view == 'Settings' && <Settings getQuery={get_query} />} */}
-            {/* </Carousel> */}
+            {/* {loggedIn && view === 'Add Account' && <AddAccount getQuery={get_query}/>} */}
+            {/* {loggedIn && view === 'Add Wallet' && <AddWallet getQuery={get_query} />} */}
+            {loggedIn && view === 'Add Token' && <AddToken />}
+            {/* {loggedIn && view == 'Settings' && <Settings getQuery={get_query} />} */}
           </ApolloProvider>}
         </ThemeProvider>
       </div>

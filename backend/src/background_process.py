@@ -11,9 +11,8 @@ import asyncio
 import requests
 import time
 
-from util               import process_to_lower_with_underscore, aggregate_balance
+from util               import process_to_lower_with_underscore, aggregate_balance, make_wallets
 from web_push           import send_web_push
-
 from async_mongo_logger import Logger
 import sys
 
@@ -92,7 +91,7 @@ async def background_user_sync(app, user):
     logger = Logger(name='background_user_sync', client=client, database='logs', collection='trader', log_to_console=True)
     user_collection = client.trader.users
     user = await user_collection.find_one({'_id': ObjectId(user['_id'])})
-
+    wallet_types = await client.trader.wallet_types.find({}).to_list(length=100)
     await logger.info(f'starting background sync for {user["username"]}')
     
     await update_user(user_collection, user, {'loop_state': "running"})
@@ -104,7 +103,8 @@ async def background_user_sync(app, user):
         
         try:
             user = await user_collection.find_one({'_id': user['_id']})
-
+            user_with_decrypted_keys['wallets'] = make_wallets(user, wallet_types)
+            
             query = ''
 
             if 'accounts' in user:

@@ -6,7 +6,24 @@ import Select from '@material-ui/core/Select'
 import MenuItem from '@material-ui/core/MenuItem'
 import InputLabel from '@material-ui/core/InputLabel'
 import FormControl from '@material-ui/core/FormControl'
-import {get_wallets, add_token} from 'services'
+import { useQuery, useMutation, gql } from '@apollo/client'
+
+const MY_WALLETS = gql`
+query{
+    me{
+      wallets{
+        name
+      }
+    }
+  }
+`
+const ADD_TOKEN = gql`
+mutation addToken($walletName: String!, $token: String!){
+    addToken(walletName: $walletName, token: $token){
+        token
+  }
+}
+`
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -26,25 +43,24 @@ const useStyles = makeStyles((theme) => ({
 export default function AddToken(props){
     const [token, setName] = useState('')
     const [walletName, setWalletName] = useState('')
-    const [menuItems, setMenuItems] = useState()
     const classes = useStyles()
+    const [add_token, { data: mutation_data }] = useMutation(ADD_TOKEN)
+    const { loading, error, data } = useQuery(MY_WALLETS)
 
-    async function updateWallets(){
-        const result = await props.getQuery(get_wallets())
-        console.log(result)
-        console.log('im triggered')
-        setMenuItems(result.payload.wallets)
-    }
+    // async function addAccount(){
+    //     await props.getQuery(add_token(token, walletName))
+    //     console.log('this')
+    // }
 
-    async function addAccount(){
-        await props.getQuery(add_token(token, walletName))
+    async function addToken(){
+        await add_token({
+                variables: {
+                    walletName: walletName, 
+                    token: token,
+            }
+        })
         console.log('this')
     }
-
-    useEffect(() => {
-        console.log('im triggered')
-        updateWallets()
-    }, [])
 
     if(props.invisible) return <></>
 
@@ -59,8 +75,8 @@ export default function AddToken(props){
                     onChange={(ev) => setWalletName(ev.target.value)}
                 >
                 {
-                    menuItems && (
-                        menuItems.map(item => <MenuItem value={item.name}>{item.name}</MenuItem>)
+                    data && (
+                        data.me.wallets.map(item => <MenuItem value={item.name}>{item.name}</MenuItem>)
                     )
                 }
                 </Select>
@@ -73,7 +89,7 @@ export default function AddToken(props){
                 label="Token"
                 autocomplete="off"
             />
-            <Button variant="contained" color="primary" onClick={addAccount}>Add token</Button>
+            <Button variant="contained" color="primary" onClick={addToken}>Add token</Button>
         </div>
     )
 }
