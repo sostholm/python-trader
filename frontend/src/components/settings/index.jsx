@@ -20,7 +20,7 @@ const useStyles = makeStyles((theme) => ({
         minWidth: 120,
       },
   }));
-//   endpoint: "${subinfo.endpoint}", expirationTime: "${subinfo.expirationTime}", p256dh: "${subinfo.keys.p256dh}", auth: "${subinfo.keys.auth}")
+
 const ADD_SUBSCRIPTION = gql`
 mutation addSubscription($endpoint: String!, $p256dh: String!, $auth: String!){
   addSubscription(endpoint: $endpoint, p256dh: $p256dh, auth: $auth){

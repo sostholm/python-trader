@@ -47,11 +47,6 @@ export default function AddToken(props){
     const [add_token, { data: mutation_data }] = useMutation(ADD_TOKEN)
     const { loading, error, data } = useQuery(MY_WALLETS)
 
-    // async function addAccount(){
-    //     await props.getQuery(add_token(token, walletName))
-    //     console.log('this')
-    // }
-
     async function addToken(){
         await add_token({
                 variables: {

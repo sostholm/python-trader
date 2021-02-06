@@ -163,7 +163,6 @@ class Account(ObjectType):
     position_history= List(Position)
 
 class WalletType(ObjectType):
-    # meta = {'collection': 'wallet_types'}
     name = String()
 
 class Wallet(ObjectType):

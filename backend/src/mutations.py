@@ -70,7 +70,7 @@ class AddWallet(graphene.Mutation):
     async def mutate(root, info, **input):
         id = info.context['request'].user.display_name
         
-        wallet_type = await info.context['client'].trader.wallet_types.find_one({'_id': input['wallet_type']})
+        wallet_type = await info.context['client'].trader.wallet_types.find_one({'name': input['wallet_type']})
         wallet = dict(
             name        = input['name'],
             address     = input['address'],

@@ -6,7 +6,7 @@ import Select from '@material-ui/core/Select'
 import MenuItem from '@material-ui/core/MenuItem'
 import InputLabel from '@material-ui/core/InputLabel'
 import FormControl from '@material-ui/core/FormControl'
-import {get_wallet_types, add_wallet} from 'services'
+import { useQuery, useMutation, gql } from '@apollo/client'
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -23,29 +23,43 @@ const useStyles = makeStyles((theme) => ({
       },
   }));
 
+const WALLET_TYPES = gql`
+query{
+    walletTypes{
+      id
+      name
+    }
+}
+`
+
+const ADD_WALLET = gql`
+mutation addWallet($name: String!, $address: String!, $wallet_type_id: String!){
+    addWallet(name: $name, address: $address, wallet_type_id: $wallet_type_id){
+        wallet{
+            name
+        }
+    }
+}
+`
+
 export default function AddWallet(props){
     const [name, setName] = useState('')
     const [address, setAddress] = useState('')
     const [walletType, setWalletType] = useState()
     const [menuItems, setMenuItems] = useState()
     const classes = useStyles()
+    const [add_wallet, { data }] = useMutation(ADD_WALLET)
+    const { loading, error, data: wallet_data } = useQuery(WALLET_TYPES)
 
-    async function updateWalletTypes(){
-        const result = await props.getQuery(get_wallet_types())
-        console.log(result)
-        console.log('im triggered')
-        setMenuItems(result.payload.walletTypes)
+    async function addWallet(){
+        await add_wallet({
+                variables: {
+                    name: name, 
+                    address: address,
+                    wallet_type_id: walletType
+            }
+        })
     }
-
-    async function addAccount(){
-        await props.getQuery(add_wallet(name, address, walletType))
-        console.log('this')
-    }
-
-    useEffect(() => {
-        console.log('im triggered')
-        updateWalletTypes()
-    }, [])
 
     if(props.invisible) return <></>
 
@@ -60,8 +74,8 @@ export default function AddWallet(props){
                     onChange={(ev) => setWalletType(ev.target.value)}
                 >
                 {
-                    menuItems && (
-                        menuItems.map(item => <MenuItem value={item.id}>{item.name}</MenuItem>)
+                    wallet_data && (
+                        wallet_data.walletTypes.map(item => <MenuItem value={item.name}>{item.name}</MenuItem>)
                     )
                 }
                 </Select>
@@ -82,7 +96,7 @@ export default function AddWallet(props){
                 label="Address"
                 autocomplete="off"
             />
-            <Button variant="contained" color="primary" onClick={addAccount}>Add wallet</Button>
+            <Button variant="contained" color="primary" onClick={addWallet}>Add wallet</Button>
         </div>
     )
 }

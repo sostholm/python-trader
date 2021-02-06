@@ -12,6 +12,10 @@ from bson import ObjectId
 from .abi import ERC20_ABI
 w3 = Web3(Web3.HTTPProvider(f'https://mainnet.infura.io/v3/0a70e18832ec4e57bc405216c585eeb4'))
 
+def get_eth_balance(address):
+    balance = w3.eth.getBalance(address) / 1000000000000000000
+    return {"name": 'Ethereum', "symbol": 'ETH', "balance": balance}
+
 def get_token_balance(address, token_contract):
     abi = ERC20_ABI
     try:
@@ -31,12 +35,12 @@ def get_token_balance(address, token_contract):
     
     return {"name": name, "symbol": symbol, "balance": balance}
 
-async def make_async(wallet, token_contract):
+async def make_async(func):
     
     loop = asyncio.get_running_loop() 
     with concurrent.futures.ThreadPoolExecutor() as pool:
         result = await loop.run_in_executor(
-            pool, functools.partial(get_token_balance, wallet, token_contract)
+            pool, func
         )
         return result
 
@@ -53,9 +57,11 @@ class Ethereum(graphene.ObjectType):
 
         balances = []
         for wallet in wallets.values():
-            for f in asyncio.as_completed([make_async(wallet['address'], i) for i in wallet['tokens']]):
+            for f in asyncio.as_completed([make_async(functools.partial(get_token_balance, wallet['address'], i)) for i in wallet['tokens']]):
                 balances.append(await f)
-        
+            
+            balances.append(await make_async(functools.partial(get_eth_balance, wallet['address'])))
+
         coins = []
         if len(balances) > 0:
             coins = await make_coins(info.context, balances, 'symbol', 'balance', 'balance')
