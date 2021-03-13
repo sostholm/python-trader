@@ -34,7 +34,7 @@ services:
             context: ./backend/
             dockerfile: ai.Dockerfile
         volumes:
-            sambashare:/usr/models/
+            - sambashare:/usr/models/
     ptrader-frontend:
         image: ptrader-frontend
         build: ./frontend
