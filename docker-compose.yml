@@ -28,7 +28,13 @@ services:
             - key
             - vapid_key_txt
             - vapid_public_key_txt
-
+    ptrader-ai:
+        image: ptrader-ai
+        build:
+            context: ./backend/
+            dockerfile: ai.Dockerfile
+        volumes:
+            sambashare:/usr/models/
     ptrader-frontend:
         image: ptrader-frontend
         build: ./frontend
@@ -52,4 +58,8 @@ secrets:
     vapid_key_txt:
         external: true
     vapid_public_key_txt:
+        external: true
+
+volumes:
+    sambashare:
         external: true

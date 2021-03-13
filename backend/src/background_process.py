@@ -2,7 +2,6 @@ from bson                                   import ObjectId
 from starlette.concurrency                  import run_in_threadpool
 from graphql.execution.executors.asyncio    import AsyncioExecutor
 from schema                                 import schema
-import models
 from database import get_client
 from datetime import datetime
 import json
@@ -10,7 +9,9 @@ import aiohttp
 import asyncio
 import requests
 import time
+import os
 
+from models             import fetch
 from util               import process_to_lower_with_underscore, aggregate_balance, make_wallets
 from web_push           import send_web_push
 from async_mongo_logger import Logger
@@ -34,7 +35,7 @@ async def coin_gecko():
     await update_gecko(gecko_collection, coin_gecko, {'loop_state':'running'})
     coin_gecko = await gecko_collection.find_one({})
 
-    await logger.info('starting coin gecko sync...')
+    await logger.info('starting minute gecko sync...')
 
     
     while coin_gecko['loop_state'] == 'running':
@@ -56,6 +57,7 @@ async def coin_gecko():
             
         except Exception as e:
             print(e)
+            await logger.error(e)
 
         while (datetime.now() - start).seconds < 60:
             coin_gecko = await gecko_collection.find_one({})
@@ -64,6 +66,71 @@ async def coin_gecko():
             await asyncio.sleep(5)
 
     await update_gecko(gecko_collection, coin_gecko, {'loop_state': 'stopped'})
+
+
+async def coin_gecko_hourly():
+
+    client = get_client(asyncio.get_running_loop())
+    logger = Logger(name='coin_gecko', client=client, database='logs', collection='trader', log_to_console=True)
+    gecko_collection = client.trader.coin_gecko
+    coin_gecko = await gecko_collection.find_one({})
+    coins_collection = client.trader.coins
+
+    await update_gecko(gecko_collection, coin_gecko, {'hourly':'running'})
+    coin_gecko = await gecko_collection.find_one({})
+
+    await logger.info('starting hourly gecko sync...')
+
+    
+    while coin_gecko['hourly'] == 'running':
+        start = datetime.now()
+        try:
+            coin_gecko = await gecko_collection.find_one({})
+
+            subscriptions = ",".join(coin_gecko['subscriptions'])
+
+            if subscriptions != '':
+
+                # response = requests.get('https://api.coingecko.com/api/v3/coins/bitcoin/ohlc?vs_currency=usd&days=1')
+                try:
+                    response = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/ohlc?vs_currency=usd&days=1')
+
+                    hourly_ohlc = response[::2]
+
+                    result = await coins_collection.find_one({"id": "bitcoin"}, {"hourly_ohlc": 1})
+                    
+                    update = {"id": "bitcoin"}
+                    
+                    if 'hourly_ohlc' in result:
+                        update["hourly_ohlc"] = result['hourly_ohlc'][-20:] + hourly_ohlc
+
+                    try:
+                        response = await fetch(f'http://{os.environ["AI"]}:8003', 'post', body=update["hourly_ohlc"])
+                        update['prediction_20h'] = response['prediction']
+                    except Exception as e:
+                        print(e)
+                        await logger.error(e)
+
+                    await update_coins(coins_collection, [update])
+
+                    await update_gecko(gecko_collection, coin_gecko, {'last_ohlc_update': int(datetime.now().timestamp())})
+                
+                except Exception as e:
+                    print(e)
+                    await logger.error(e)
+            
+        except Exception as e:
+            print(e)
+            await logger.error(e)
+
+        while (datetime.now() - start).seconds < 60 * 60:
+            coin_gecko = await gecko_collection.find_one({})
+            if coin_gecko['hourly'] != 'running':
+                break
+            await asyncio.sleep(5)
+
+    await update_gecko(gecko_collection, coin_gecko, {'hourly': 'stopped'})
+
 
 def create_exchange_balance_query(exchange):
     return exchange + '''{

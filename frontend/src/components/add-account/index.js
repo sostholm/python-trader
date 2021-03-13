@@ -6,7 +6,7 @@ import Select from '@material-ui/core/Select'
 import MenuItem from '@material-ui/core/MenuItem'
 import InputLabel from '@material-ui/core/InputLabel'
 import FormControl from '@material-ui/core/FormControl'
-import {get_exchanges, add_account} from 'services'
+import { useQuery, useMutation, gql } from '@apollo/client'
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -23,29 +23,43 @@ const useStyles = makeStyles((theme) => ({
       },
   }));
 
+const EXCHANGES = gql`
+query{
+    exchanges{
+        id
+        name
+    }
+}
+`
+
+const ADD_ACCOUNT = gql`
+  mutation addAccount($apiKey: String!, $secret: String!, $exchangeId: String!){
+    addAccount(apiKey: $apiKey, secret: $secret, exchangeId: $exchangeId){
+        account{
+            apiKey
+        }
+    }
+  }
+  `
+  
+
 export default function AddAccount(props){
     const [apiKey, setApiKey] = useState('')
     const [apiSecret, setApiSecret] = useState('')
     const [exchange, setExchange] = useState()
-    const [menuItems, setMenuItems] = useState()
     const classes = useStyles()
-
-    async function updateExchanges(){
-        const result = await props.getQuery(get_exchanges())
-        console.log(result)
-        console.log('im triggered')
-        setMenuItems(result.payload.exchanges)
-    }
+    const [add_account, { data: mutation_data }] = useMutation(ADD_ACCOUNT)
+    const { loading, error, data } = useQuery(EXCHANGES)
 
     async function addAccount(){
-        await props.getQuery(add_account(apiKey, apiSecret, exchange))
-        console.log('this')
+        await add_account({
+                variables: {
+                    apiKey: apiKey, 
+                    secret: apiSecret,
+                    exchangeId: exchange.id
+            }
+        })
     }
-
-    useEffect(() => {
-        console.log('im triggered')
-        updateExchanges()
-    }, [])
 
     if(props.invisible) return <></>
 
@@ -60,8 +74,8 @@ export default function AddAccount(props){
                 onChange={(ev) => setExchange(ev.target.value)}
                 >
                 {
-                    menuItems && (
-                        menuItems.map(item => <MenuItem value={item.id}>{item.name}</MenuItem>)
+                    data && (
+                        data.exchanges.map(item => <MenuItem value={item.id}>{item.name}</MenuItem>)
                     )
                 }
                 </Select>

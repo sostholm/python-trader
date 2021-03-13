@@ -36,14 +36,16 @@ client = motor.motor_asyncio.AsyncIOMotorClient()
 async def fetch(url, type='get', body={}):
     async with aiohttp.ClientSession() as session:
         if type == 'get':
-            async with session.get(fetch) as resp:
-                print(resp.status)
+            async with session.get(url) as resp:
+                if resp.status != 200:
+                    raise Exception(resp.reason)
                 resp = await resp.text()
                 return json.loads(resp)
 
         if type == 'post':
             async with session.post(url, json=body) as resp:
-                print(resp.status)
+                if resp.status != 200:
+                    raise Exception(resp.reason)
                 resp = await resp.text()
                 return json.loads(resp)
         

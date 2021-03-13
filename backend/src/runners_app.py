@@ -89,11 +89,20 @@ async def on_startup():
     
     logger = Logger(name='coin_gecko', client=client, database='logs', collection='trader', log_to_console=True)
     await logger.info('Set all loops to stopped')
-    tasks['gecko'] = asyncio.ensure_future(background_process.coin_gecko())
+    
+    tasks['gecko']              = asyncio.ensure_future(background_process.coin_gecko())
+    tasks['coin_gecko_hourly']  = asyncio.ensure_future(background_process.coin_gecko_hourly())
     await logger.info('Started tasks')
 
-def on_shutdown():
-    pass
+async def on_shutdown():
+    global trader_database 
+    trader_database = get_client(asyncio.get_running_loop()).trader
+    client = get_client(asyncio.get_running_loop())
+    logger = Logger(name='coin_gecko', client=client, database='logs', collection='trader', log_to_console=True)
+    await logger.info('Set all loops to stopped')
+    gecko_collection = client.trader.coin_gecko.find_one({})
+    coin_gecko = await gecko_collection
+    gecko_collection.update_one({'_id': coin_gecko['_id']}, {'$set': {'hourly':'stopped', 'loop_state': 'stopped'}} , upsert=False)
     # coin_gecko = CoinGecko.object().first()
     # coin_gecko.loop_state = 'stopped'
     # coin_gecko.save()

@@ -26,7 +26,6 @@ const useStyles = makeStyles((theme) => ({
 const WALLET_TYPES = gql`
 query{
     walletTypes{
-      id
       name
     }
 }

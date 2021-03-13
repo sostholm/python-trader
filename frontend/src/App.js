@@ -77,10 +77,9 @@ function App() {
             {<Drawer views={views} setView={setView} logout={logout} />}
             {loggedIn && view === 'Balance' &&  <Balance />}
             {loggedIn && view == 'Settings' &&  <Settings />}
-            {/* {loggedIn && view === 'Add Account' && <AddAccount />} */}
+            {loggedIn && view === 'Add Account' && <AddAccount />}
             {loggedIn && view === 'Add Wallet' && <AddWallet />}
             {loggedIn && view === 'Add Token' && <AddToken />}
-            {/* {loggedIn && view == 'Settings' && <Settings getQuery={get_query} />} */}
           </ApolloProvider>}
         </ThemeProvider>
       </div>
