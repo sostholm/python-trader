@@ -35,6 +35,10 @@ services:
             dockerfile: ai.Dockerfile
         volumes:
             - sambashare:/usr/models/
+        secrets:
+            - mongo_password
+            - cert
+            - key
     ptrader-frontend:
         image: ptrader-frontend
         build: ./frontend
