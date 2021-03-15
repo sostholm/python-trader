@@ -13,10 +13,7 @@ import time
 
 import matplotlib.pyplot as plt
 import numpy as np
-from tensorflow import keras
-from tensorflow.keras import layers
-from tensorflow.keras.models import Sequential
-import tensorflow as tf
+import tflite_runtime.interpreter as tflite
 
 import pandas as pd
 import random
@@ -27,11 +24,10 @@ import matplotlib
 import mplfinance as mpf
 matplotlib.use('Agg')
 
-loaded_model = tf.keras.models.load_model('/usr/models/btc_1h_80_percent')
-loaded_model.compile(optimizer='adam',
-              loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
-              metrics=['accuracy'])
-normalization_layer = layers.experimental.preprocessing.Rescaling(1./255)
+# loaded_model = tf.keras.models.load_model('/usr/models/btc_1h_80_percent')
+interpreter = tflite.Interpreter(model_path='/usr/models/btc_1h_80_percent.tflite')
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
 
 classes = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
 
@@ -46,15 +42,23 @@ async def predict(request):
 
     path = f'/tmp'
     file = path+ f'/{uuid4()}.png'
-    mpf.plot(df,type='candle', style='charles', axisoff=True, savefig=dict(fname=file, bbox_inches="tight"))
+    mpf.plot(df,type='candle', style='charles', axisoff=True, savefig=dict(fname=file, bbox_inches="tight"), closefig=True, returnfig=True)
+    plt.close('all')
+    
     img = cv2.imread(file, cv2.COLOR_RGBA2RGB)
     width = int(img.shape[0]* 5 / 100)
     height = int(img.shape[1]* 5 / 100)
     dim = (width, height)
     resized =cv2.resize(img, dim, interpolation = cv2.INTER_AREA)
-    resized = (normalization_layer(resized))
-    reshaped = tf.reshape(resized, [1, 29, 21, 3])
-    prediction = list(loaded_model.predict(reshaped)[0])
+    reshaped = np.reshape(resized, [1, 29, 21, 3])
+    
+    reshaped = reshaped.astype(np.float32)
+    interpreter.set_tensor(input_details[0]['index'], reshaped)
+    interpreter.invoke()
+    output_data = interpreter.get_tensor(output_details[0]['index'])
+    results = np.squeeze(output_data)
+    
+    prediction = list(results)
 
     prediction = classes[prediction.index(max(prediction))]
     

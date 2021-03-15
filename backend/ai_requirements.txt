@@ -1,5 +1,4 @@
 starlette
 uvicorn
 mplfinance
-tensorflow
 opencv-python
