@@ -28,6 +28,7 @@ matplotlib.use('Agg')
 interpreter = tflite.Interpreter(model_path='/usr/models/btc_1h_80_percent.tflite')
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
+interpreter.allocate_tensors()
 
 classes = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
 
@@ -44,7 +45,7 @@ async def predict(request):
     file = path+ f'/{uuid4()}.png'
     mpf.plot(df,type='candle', style='charles', axisoff=True, savefig=dict(fname=file, bbox_inches="tight"), closefig=True, returnfig=True)
     plt.close('all')
-    
+
     img = cv2.imread(file, cv2.COLOR_RGBA2RGB)
     width = int(img.shape[0]* 5 / 100)
     height = int(img.shape[1]* 5 / 100)
