@@ -14,7 +14,10 @@ services:
             - vapid_public_key_txt
         ports:
             - 8000:8000
-    
+        logging:
+            driver: loki
+            options:
+                loki-url: "http://localhost:3100/loki/api/v1/push"    
     ptrader-worker:
         image: ptrader-worker
         build:
@@ -22,12 +25,17 @@ services:
             dockerfile: worker.Dockerfile
         environment:
             - DATABASE_HOSTNAME=server
+            - AI=ptrader-ai
         secrets:
             - mongo_password
             - cert
             - key
             - vapid_key_txt
             - vapid_public_key_txt
+        logging:
+            driver: loki
+            options:
+                loki-url: "http://localhost:3100/loki/api/v1/push"
     ptrader-ai:
         image: ptrader-ai
         build:
@@ -39,6 +47,10 @@ services:
             - mongo_password
             - cert
             - key
+        logging:
+            driver: loki
+            options:
+                loki-url: "http://localhost:3100/loki/api/v1/push"
     ptrader-frontend:
         image: ptrader-frontend
         build: ./frontend
@@ -52,6 +64,10 @@ services:
             - 8001:8001
         volumes:
             - "./secrets:/app/secrets"
+        logging:
+            driver: loki
+            options:
+                loki-url: "http://localhost:3100/loki/api/v1/push"
 secrets:
     mongo_password:
         external: true
