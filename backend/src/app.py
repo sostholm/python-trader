@@ -59,7 +59,7 @@ async def login(request):
         except Exception as e:
             print(e)
 
-    token = jwt.encode({'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=1800), 'id': str(user['_id'])}, 'secret', algorithm='HS256')
+    token = jwt.encode({'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=1800), 'id': str(user['_id']), 'access': 'write'}, 'secret', algorithm='HS256')
     response = {'token': token}
     return JSONResponse(response)
 
@@ -68,6 +68,9 @@ class AuthMiddleware:
     async def resolve(self, next, root, info, **args):
         if not info.context['request']['user'].is_authenticated:
             raise Exception('Not authenticated.')
+        if info.context['request']['user'].payload['access'] == 'read' and 'mutation' in json.dumps(info.context['request']._json).lower():
+            raise Exception('Not authorized for mutations.')
+
         results = next(root, info, **args)
         return results
 
