@@ -44,7 +44,7 @@ def sign(params, api_secret):
 async def gen_request(uri, method, api_secret, api_key, body=None):
     params = dict(
         timestamp = int(time.time() * 1000),
-        recvWindow = 20000,
+        recvWindow = 30000,
     )
 
     params['signature'] = sign(params, api_secret)
