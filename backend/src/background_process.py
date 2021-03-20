@@ -297,7 +297,7 @@ async def user_hourly(app, user):
         except Exception as e:
             logging.exception(e)
         
-        while (datetime.now() - start).seconds < 60:
+        while (datetime.now() - start).seconds < 60 * 60:
             user = await user_collection.find_one({'_id': user['_id']})
             if user['hourly'] != 'running':
                 break
