@@ -14,8 +14,11 @@ import os
 from models             import fetch
 from util               import process_to_lower_with_underscore, aggregate_balance, make_wallets
 from web_push           import send_web_push
-from async_mongo_logger import Logger
+import logging
 import sys
+
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+
 
 async def update_gecko(collection, gecko, update):
     return await collection.update_one({'_id': gecko['_id']}, {'$set': update} , upsert=False)
@@ -27,7 +30,6 @@ async def update_coins(collection, updates):
 async def coin_gecko():
 
     client = get_client(asyncio.get_running_loop())
-    logger = Logger(name='coin_gecko', client=client, database='logs', collection='trader', log_to_console=True)
     gecko_collection = client.trader.coin_gecko
     coin_gecko = await gecko_collection.find_one({})
     coins_collection = client.trader.coins
@@ -35,7 +37,7 @@ async def coin_gecko():
     await update_gecko(gecko_collection, coin_gecko, {'loop_state':'running'})
     coin_gecko = await gecko_collection.find_one({})
 
-    await logger.info('starting minute gecko sync...')
+    logging.info('starting minute gecko sync...')
 
     
     while coin_gecko['loop_state'] == 'running':
@@ -57,7 +59,7 @@ async def coin_gecko():
             
         except Exception as e:
             print(e)
-            await logger.error(e)
+            logging.exception(e)
 
         while (datetime.now() - start).seconds < 60:
             coin_gecko = await gecko_collection.find_one({})
@@ -71,7 +73,6 @@ async def coin_gecko():
 async def coin_gecko_hourly():
 
     client = get_client(asyncio.get_running_loop())
-    logger = Logger(name='coin_gecko', client=client, database='logs', collection='trader', log_to_console=True)
     gecko_collection = client.trader.coin_gecko
     coin_gecko = await gecko_collection.find_one({})
     coins_collection = client.trader.coins
@@ -79,7 +80,7 @@ async def coin_gecko_hourly():
     await update_gecko(gecko_collection, coin_gecko, {'hourly':'running'})
     coin_gecko = await gecko_collection.find_one({})
 
-    await logger.info('starting hourly gecko sync...')
+    logging.info('starting hourly gecko sync...')
 
     
     while coin_gecko['hourly'] == 'running':
@@ -108,20 +109,17 @@ async def coin_gecko_hourly():
                         response = await fetch(f'http://{os.environ["AI"]}:8003/predict', 'post', body=update["hourly_ohlc"])
                         update['prediction_20h'] = response['prediction']
                     except Exception as e:
-                        print(e)
-                        await logger.error(e)
+                        logging.exception(e)
 
                     await update_coins(coins_collection, [update])
 
                     await update_gecko(gecko_collection, coin_gecko, {'last_ohlc_update': int(datetime.now().timestamp())})
                 
                 except Exception as e:
-                    print(e)
-                    await logger.error(e)
+                    logging.exception(e)
             
         except Exception as e:
-            print(e)
-            await logger.error(e)
+            logging.exception(e)
 
         while (datetime.now() - start).seconds < 60 * 60:
             coin_gecko = await gecko_collection.find_one({})
@@ -155,11 +153,10 @@ async def background_user_sync(app, user):
  
     loop = asyncio.get_running_loop()
     client = get_client(loop)
-    logger = Logger(name='background_user_sync', client=client, database='logs', collection='trader', log_to_console=True)
     user_collection = client.trader.users
     user = await user_collection.find_one({'_id': ObjectId(user['_id'])})
     wallet_types = await client.trader.wallet_types.find({}).to_list(length=100)
-    await logger.info(f'starting background sync for {user["username"]}')
+    logging.info(f'starting background sync for {user["username"]}')
     
     await update_user(user_collection, user, {'loop_state': "running"})
 
@@ -205,16 +202,16 @@ async def background_user_sync(app, user):
                     try:
                         await handle_notifications(user=user, balance=balance, client=client)
                     except Exception as e:
-                        await logger.error(f'notification: {e.message}')
+                        logging.exception(f'notification: {e.message}')
                     
                     # user.total_value.append(models.TotalValue(usd_value=total_usd))
                     await update_user(user_collection, user, {'last_update': int(datetime.now().timestamp())})
                 
                 if result.errors:
-                    [await logger.error(error.message) for error in result.errors if hasattr(error, 'message')]
+                    [logging.exception(error.message) for error in result.errors if hasattr(error, 'message')]
         
         except Exception as e:
-            await logger.error(e)
+            logging.exception(e)
         
         while (datetime.now() - start).seconds < 60:
             user = await user_collection.find_one({'_id': user['_id']})
@@ -224,7 +221,79 @@ async def background_user_sync(app, user):
     
     await update_user(user_collection, user, {'loop_state': "stopped"})
     
+async def user_hourly(app, user):
+    user_with_decrypted_keys = user
+ 
+    loop = asyncio.get_running_loop()
+    client = get_client(loop)
+    user_collection = client.trader.users
+    user = await user_collection.find_one({'_id': ObjectId(user['_id'])})
+    wallet_types = await client.trader.wallet_types.find({}).to_list(length=100)
+    logging.info(f'starting background sync for {user["username"]}')
+    
+    await update_user(user_collection, user, {'hourly': "running"})
+
+    user = await user_collection.find_one({'_id': user['_id']})
+
+    while user['hourly'] == "running":
+        start = datetime.now()
         
+        try:
+            user = await user_collection.find_one({'_id': user['_id']})
+            user_with_decrypted_keys['wallets'] = make_wallets(user, wallet_types)
+            
+            query = ''
+
+            if 'accounts' in user:
+
+                for account in user['accounts']:
+                    exchange = await client.trader.exchanges.find_one({'_id': account['exchange']})
+                    query = query +  create_exchange_balance_query(exchange['name'])
+                
+                for wallet in user['wallets']:
+                    wallet_type = await client.trader.wallet_types.find_one({'_id': wallet['wallet_type']})
+                    query = query +  create_exchange_balance_query(wallet_type['name'])
+                query = 'query{\n' + query + '\n}'
+                
+                result = await schema.execute(query, executor=AsyncioExecutor(loop=loop), return_promise=True, context={'app': app, 'user': user_with_decrypted_keys})
+                
+                if result.data:
+                    
+                    balance = []
+                    updates = []
+                    for key in result.data.keys():
+                        if result.data[key]['balance']:
+                            for entry in result.data[key]['balance']:
+                                entry['exchange'] = key 
+                                balance.append(entry)
+                                updates.append(process_to_lower_with_underscore(entry))
+                    
+                    total_usd = sum([float(currency['usd']) for exchange in result.data.values() if exchange['balance'] for currency in exchange['balance']])
+                    updates = aggregate_balance(updates)
+                    await update_user(user_collection, user, {'portfolio': updates, 'portfolio_value': total_usd})
+                    
+                    try:
+                        await handle_notifications(user=user, balance=balance, client=client)
+                    except Exception as e:
+                        logging.exception(f'notification: {e.message}')
+                    
+                    # user.total_value.append(models.TotalValue(usd_value=total_usd))
+                    await update_user(user_collection, user, {'last_update': int(datetime.now().timestamp())})
+                
+                if result.errors:
+                    [logging.exception(error.message) for error in result.errors if hasattr(error, 'message')]
+        
+        except Exception as e:
+            logging.exception(e)
+        
+        while (datetime.now() - start).seconds < 60:
+            user = await user_collection.find_one({'_id': user['_id']})
+            if user['hourly'] != 'running':
+                break
+            time.sleep(5)
+    
+    await update_user(user_collection, user, {'hourly': "stopped"})
+
 async def handle_notifications(user, balance, client):
     up_1h       = []
     down_1h     = []
