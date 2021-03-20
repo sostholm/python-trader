@@ -41,7 +41,10 @@ async def user_loop(request):
 
     user = body['user']
     if user['_id'] not in tasks:
-        tasks[user['_id']] = asyncio.ensure_future(background_process.background_user_sync(app, body['user']))
+        tasks[user['_id']] = [
+            asyncio.ensure_future(background_process.background_user_sync(app, body['user'])),
+            asyncio.ensure_future(background_process.user_hourly(app, body['user']))
+        ]
 
         start = datetime.now()
 
