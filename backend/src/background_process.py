@@ -132,8 +132,9 @@ async def coin_gecko_hourly():
                         response = await fetch(f'http://{os.environ["AI"]}:8003/', 'post', body=update["hourly_ohlc"])
                         update['prediction_20h'] = response['prediction']
                         
-                        prediction_usd = update["hourly_ohlc"][-1] * response['prediction']
-                        await update_value_history(value_history_collection, coin_gecko, {f'{coin_id}_predictions': {'usd':  prediction_usd, 'prediction': response['prediction'], 'timestamp': int(datetime.now().timestamp())}})
+                        prediction_usd = update["hourly_ohlc"][-1][-1] * response['prediction']
+                        timestamp = 72000 + int(datetime.now().timestamp())
+                        await update_value_history(value_history_collection, coin_gecko, {f'{coin_id}_predictions': {'usd':  prediction_usd, 'prediction': response['prediction'], 'timestamp': timestamp}})
                     except Exception as e:
                         logging.exception(e)
 
