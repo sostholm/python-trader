@@ -105,7 +105,7 @@ async def coin_gecko_hourly():
                         update["hourly_ohlc"] = result['hourly_ohlc'][-20:] + hourly_ohlc
 
                     try:
-                        response = await fetch(f'http://{os.environ["AI"]}:8003/predict', 'post', body=update["hourly_ohlc"])
+                        response = await fetch(f'http://{os.environ["AI"]}:8003/', 'post', body=update["hourly_ohlc"])
                         update['prediction_20h'] = response['prediction']
                     except Exception as e:
                         print(e)
