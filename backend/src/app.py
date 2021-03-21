@@ -18,6 +18,7 @@ import bcrypt
 import asyncio
 import os
 import time
+import aiohttp
 from models         import User, fetch
 from database       import get_client
 from util           import make_wallets, make_exchanges
@@ -55,7 +56,7 @@ async def login(request):
     if user['loop_state'] != 'running':
         try:
             payload = {'_id': str(user['_id']), 'wallets': user['wallets'], 'exchanges': user['exchanges']}
-            await fetch(f'http://{os.environ["WORKER"]}:8002', 'post', body={"user": payload})
+            await fetch(request.app.aiohttp_session, f'http://{os.environ["WORKER"]}:8002', 'post', body={"user": payload})
         except Exception as e:
             print(e)
 
@@ -98,6 +99,7 @@ middleware = [
 async def on_startup():
     client = get_client(asyncio.get_running_loop())
     app.__dict__['mongo'] = client
+    app.__dict__['aiohttp_session'] = aiohttp.ClientSession()
 
 def on_shutdown():
     pass
