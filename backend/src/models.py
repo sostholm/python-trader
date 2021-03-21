@@ -33,21 +33,20 @@ else:
 connect('trader', host=f'mongodb://{os.environ["DATABASE_HOSTNAME"]}:27017', username='root', password=PASSWORD, authentication_source='admin')
 client = motor.motor_asyncio.AsyncIOMotorClient()
 
-async def fetch(url, type='get', body={}):
-    async with aiohttp.ClientSession() as session:
-        if type == 'get':
-            async with session.get(url) as resp:
-                if resp.status != 200:
-                    raise Exception(resp.reason)
-                resp = await resp.text()
-                return json.loads(resp)
+async def fetch(session, url, type='get', body={}):
+    if type == 'get':
+        async with session.get(url) as resp:
+            if resp.status != 200:
+                raise Exception(resp.reason)
+            resp = await resp.text()
+            return json.loads(resp)
 
-        if type == 'post':
-            async with session.post(url, json=body) as resp:
-                if resp.status != 200:
-                    raise Exception(resp.reason)
-                resp = await resp.text()
-                return json.loads(resp)
+    if type == 'post':
+        async with session.post(url, json=body) as resp:
+            if resp.status != 200:
+                raise Exception(resp.reason)
+            resp = await resp.text()
+            return json.loads(resp)
         
 
 # class Order(graphene.ObjectType):

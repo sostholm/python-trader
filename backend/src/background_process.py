@@ -49,7 +49,7 @@ async def update_value_history(collection, user, update, method='$push'):
 
 
 async def coin_gecko():
-
+    session = aiohttp.ClientSession()
     client = get_client(asyncio.get_running_loop())
     gecko_collection = client.trader.coin_gecko
     coin_gecko = await gecko_collection.find_one({})
@@ -70,10 +70,8 @@ async def coin_gecko():
 
             if subscriptions != '':
 
-                response = requests.get("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=1h,24h,7d,14d,30d")
-                if response.ok:
-                    coin_list = response.json()
-                    await update_coins(coins_collection, coin_list)
+                response = await fetch(session, "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=1h,24h,7d,14d,30d")
+                await update_coins(coins_collection, response)
 
                 await update_gecko(gecko_collection, coin_gecko, {'last_price_update': int(datetime.now().timestamp())})
 
@@ -92,7 +90,7 @@ async def coin_gecko():
 
 
 async def coin_gecko_hourly():
-
+    session = aiohttp.ClientSession()
     client = get_client(asyncio.get_running_loop())
     gecko_collection = client.trader.coin_gecko
     coin_gecko = await gecko_collection.find_one({})
@@ -117,7 +115,7 @@ async def coin_gecko_hourly():
                 # response = requests.get('https://api.coingecko.com/api/v3/coins/bitcoin/ohlc?vs_currency=usd&days=1')
                 try:
                     coin_id = 'bitcoin'
-                    response = await fetch(f'https://api.coingecko.com/api/v3/coins/{coin_id}/ohlc?vs_currency=usd&days=1')
+                    response = await fetch(session, f'https://api.coingecko.com/api/v3/coins/{coin_id}/ohlc?vs_currency=usd&days=1')
 
                     hourly_ohlc = response[::2]
 
@@ -129,7 +127,7 @@ async def coin_gecko_hourly():
                         update["hourly_ohlc"] = result['hourly_ohlc'][-20:] + hourly_ohlc
 
                     try:
-                        response = await fetch(f'http://{os.environ["AI"]}:8003/', 'post', body=update["hourly_ohlc"])
+                        response = await fetch(session, f'http://{os.environ["AI"]}:8003/', 'post', body=update["hourly_ohlc"])
                         update['prediction_20h'] = response['prediction']
                         
                         prediction_usd = update["hourly_ohlc"][-1][-1] * response['prediction']
@@ -226,7 +224,7 @@ async def background_user_sync(app, user):
             user = await user_collection.find_one({'_id': user['_id']})
             if user['loop_state'] != 'running':
                 break
-            time.sleep(5)
+            await asyncio.sleep(5)
     
     await update_user(user_collection, user, {'loop_state': "stopped"})
 
@@ -301,7 +299,7 @@ async def user_hourly(app, user):
             user = await user_collection.find_one({'_id': user['_id']})
             if user['hourly'] != 'running':
                 break
-            time.sleep(5)
+            await asyncio.sleep(5)
     
     await update_user(user_collection, user, {'hourly': "stopped"})
 

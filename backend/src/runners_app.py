@@ -94,7 +94,7 @@ async def on_startup():
     await logger.info('Set all loops to stopped')
     
     tasks['gecko']              = asyncio.ensure_future(background_process.coin_gecko())
-    tasks['coin_gecko_hourly']  = asyncio.ensure_future(background_process.coin_gecko_hourly())
+    # tasks['coin_gecko_hourly']  = asyncio.ensure_future(background_process.coin_gecko_hourly())
     await logger.info('Started tasks')
 
 async def on_shutdown():
