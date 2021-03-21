@@ -8,7 +8,7 @@ import exchanges
 # from models import Position as PositionNode
 # from models import Order as OrderNode
 # from models import User
-from models import Exchange, WalletType, User, CoinGecko, CoinGeckoCoin
+from models import Exchange, WalletType, User, CoinGecko, CoinGeckoCoin, ValueHistory
 # from database import client
 from exchanges import AddBittrexOrder
 # from mutations import AddUser, AddPosition, AddOrder
@@ -25,6 +25,20 @@ from requested_fields import get_projection
 
 # client = motor.motor_asyncio.AsyncIOMotorClient(f'mongodb://root:{os.environ["PASSWORD"]}@pine64:27017')
 
+def get_user_projection_and_mongo(info):
+    if 'request' in info.context:
+        id = info.context['request'].user.display_name
+    else:
+        id = info.context['user']['_id']
+    fields = get_projection(info, True)
+
+    if 'request' in info.context:
+        client = info.context['request'].app.mongo
+    else:
+        client = info.context['client']
+
+    return id, fields, client
+
 class Query(graphene.ObjectType):
     # node = Node.Field()
     # user = graphene.Field(UserNode, id=graphene.String())
@@ -37,6 +51,7 @@ class Query(graphene.ObjectType):
     wallet_types= graphene.List(WalletType)
     # coins       = graphene.List(CoinGeckoCoin, args={'id': graphene.List(graphene.String)})
     me          = graphene.Field(User)
+    value_history= graphene.Field(ValueHistory)
     bittrex     = graphene.Field(Bittrex)
     crypto_cdc  = graphene.Field(Cdc)
     gateio      = graphene.Field(GateIO)
@@ -58,17 +73,13 @@ class Query(graphene.ObjectType):
     #     user = User.objects(id=user_id).first()
     #     return user
     async def resolve_me(self, info):
-        if 'request' in info.context:
-            id = info.context['request'].user.display_name
-        else:
-            id = info.context['user']['_id']
-        fields = get_projection(info, True)
-
-        if 'request' in info.context:
-            client = info.context['request'].app.mongo
-        else:
-            client = info.context['client']
+        id, fields, client = get_user_projection_and_mongo(info)
         user = await client.trader.users.find_one({'_id': ObjectId(id)}, fields)
+        return user
+
+    async def resolve_value_history(self, info):
+        id, fields, client = get_user_projection_and_mongo(info)
+        user = await client.trader.value_history.find_one({'user': ObjectId(id)}, fields)
         return user
 
     async def resolve_exchanges(self, info):

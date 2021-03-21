@@ -202,6 +202,14 @@ class User(ObjectType):
     events          = List(Event)
     portfolio_value = Float()
 
+class ValueHistoryEntry(ObjectType):
+    total_usd       = Float()
+    timestamp       = Int()
+
+class ValueHistory(ObjectType):
+    user            = Field(User)
+    portfolio_value = List(ValueHistoryEntry)
+
 # class TotalValue(ObjectType):
 #     timestamp       = DateTime()
 #     usd_value       = Int()
