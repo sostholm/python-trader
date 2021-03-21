@@ -61,7 +61,7 @@ async def login(request):
             print(e)
 
     token = jwt.encode({'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=1800), 'id': str(user['_id']), 'access': 'write'}, 'secret', algorithm='HS256')
-    response = {'token': token.decode('utf-8')}
+    response = {'token': token}
     return JSONResponse(response)
 
 
