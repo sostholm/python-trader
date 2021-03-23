@@ -204,7 +204,7 @@ class User(ObjectType):
 
 class ValueHistoryEntry(ObjectType):
     total_usd       = Float()
-    timestamp       = Int()
+    timestamp       = DateTime()
 
 class ValueHistory(ObjectType):
     user            = Field(User)
