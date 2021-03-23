@@ -210,6 +210,15 @@ class ValueHistory(ObjectType):
     user            = Field(User)
     portfolio_value = List(ValueHistoryEntry)
 
+class PredictionHistoryEntry(ObjectType):
+    usd             = Float()
+    prediction      = Float()
+    timestamp       = DateTime()
+
+class PredictionHistory(ObjectType):
+    user            = Field(CoinGecko)
+    portfolio_value = List(PredictionHistoryEntry)
+
 # class TotalValue(ObjectType):
 #     timestamp       = DateTime()
 #     usd_value       = Int()

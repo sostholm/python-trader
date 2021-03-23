@@ -8,7 +8,7 @@ import exchanges
 # from models import Position as PositionNode
 # from models import Order as OrderNode
 # from models import User
-from models import Exchange, WalletType, User, CoinGecko, CoinGeckoCoin, ValueHistory
+from models import Exchange, WalletType, User, CoinGecko, CoinGeckoCoin, ValueHistory, PredictionHistory
 # from database import client
 from exchanges import AddBittrexOrder
 # from mutations import AddUser, AddPosition, AddOrder
@@ -51,7 +51,6 @@ class Query(graphene.ObjectType):
     wallet_types= graphene.List(WalletType)
     # coins       = graphene.List(CoinGeckoCoin, args={'id': graphene.List(graphene.String)})
     me          = graphene.Field(User)
-    value_history= graphene.Field(ValueHistory)
     bittrex     = graphene.Field(Bittrex)
     crypto_cdc  = graphene.Field(Cdc)
     gateio      = graphene.Field(GateIO)
@@ -59,6 +58,8 @@ class Query(graphene.ObjectType):
     coin_gecko  = graphene.Field(CoinGecko)
     binance     = graphene.Field(Binance)
     notify      = graphene.Field(graphene.String, args={'id': graphene.String(), 'text': graphene.String()})
+    value_history       = graphene.Field(ValueHistory)
+    PredictionHistory   = graphene.Field(PredictionHistory)
     # orders = graphene.List(Order)
     # all_microbes = MongoengineConnectionField(Microbe)
     # all_Probiotics = MongoengineConnectionField(Probiotic)
@@ -80,6 +81,11 @@ class Query(graphene.ObjectType):
     async def resolve_value_history(self, info):
         id, fields, client = get_user_projection_and_mongo(info)
         user = await client.trader.value_history.find_one({'user': ObjectId(id)}, fields)
+        return user
+
+    async def resolve_prediction_history(self, info):
+        id, fields, client = get_user_projection_and_mongo(info)
+        user = await client.trader.value_history.find_one({'user': ObjectId('5f526ffee5da7706984ba8ca')}, fields)
         return user
 
     async def resolve_exchanges(self, info):
