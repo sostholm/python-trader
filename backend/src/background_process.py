@@ -3,7 +3,7 @@ from starlette.concurrency                  import run_in_threadpool
 from graphql.execution.executors.asyncio    import AsyncioExecutor
 from schema                                 import schema
 from database import get_client
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import aiohttp
 import asyncio
@@ -131,8 +131,7 @@ async def coin_gecko_hourly():
                         update['prediction_20h'] = response['prediction']
                         
                         prediction_usd = update["hourly_ohlc"][-1][-1] * response['prediction']
-                        timestamp = 72000 + int(datetime.now().timestamp())
-                        await update_value_history(value_history_collection, coin_gecko, {f'{coin_id}_predictions': {'usd':  prediction_usd, 'prediction': response['prediction'], 'timestamp': timestamp}})
+                        await update_value_history(value_history_collection, coin_gecko, {f'{coin_id}_predictions': {'usd':  prediction_usd, 'prediction': response['prediction'], 'timestamp': datetime.utcnow() + timedelta(20)}})
                     except Exception as e:
                         logging.exception(e)
 
@@ -279,7 +278,7 @@ async def user_hourly(app, user):
                     
                     total_usd = sum([float(currency['usd']) for exchange in result.data.values() if exchange['balance'] for currency in exchange['balance']])
                     # updates = aggregate_balance(updates)
-                    await update_value_history(value_history_collection, user, {'portfolio_value': {'total_usd': total_usd, 'timestamp': int(datetime.now().timestamp())}})
+                    await update_value_history(value_history_collection, user, {'portfolio_value': {'total_usd': total_usd, 'timestamp': datetime.utcnow()}})
                     
                     # try:
                     #     await handle_notifications(user=user, balance=balance, client=client)
