@@ -131,7 +131,7 @@ async def coin_gecko_hourly():
                         update['prediction_20h'] = response['prediction']
                         
                         prediction_usd = update["hourly_ohlc"][-1][-1] * response['prediction']
-                        await update_value_history(value_history_collection, coin_gecko, {f'{coin_id}_predictions': {'usd':  prediction_usd, 'prediction': response['prediction'], 'timestamp': datetime.utcnow() + timedelta(20)}})
+                        await update_value_history(value_history_collection, coin_gecko, {f'{coin_id}_predictions': {'usd':  prediction_usd, 'prediction': response['prediction'], 'timestamp': datetime.utcnow() + timedelta(hours=20)}})
                     except Exception as e:
                         logging.exception(e)
 
