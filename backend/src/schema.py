@@ -59,7 +59,7 @@ class Query(graphene.ObjectType):
     binance     = graphene.Field(Binance)
     notify      = graphene.Field(graphene.String, args={'id': graphene.String(), 'text': graphene.String()})
     value_history       = graphene.Field(ValueHistory)
-    PredictionHistory   = graphene.Field(PredictionHistory)
+    prediction_history   = graphene.Field(PredictionHistory)
     # orders = graphene.List(Order)
     # all_microbes = MongoengineConnectionField(Microbe)
     # all_Probiotics = MongoengineConnectionField(Probiotic)
