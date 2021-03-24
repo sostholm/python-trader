@@ -216,8 +216,8 @@ class PredictionHistoryEntry(ObjectType):
     timestamp       = DateTime()
 
 class PredictionHistory(ObjectType):
-    user            = Field(CoinGecko)
-    portfolio_value = List(PredictionHistoryEntry)
+    user                = Field(CoinGecko)
+    bitcoin_predictions = List(PredictionHistoryEntry)
 
 # class TotalValue(ObjectType):
 #     timestamp       = DateTime()
