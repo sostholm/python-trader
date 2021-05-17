@@ -40,3 +40,5 @@ yarn-error.log*
 
 debug.log
 .eslintcache
+models
+models/btc_1h_80_percent.tflite
