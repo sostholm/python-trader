@@ -7,8 +7,8 @@ const logout = () => {
 }
 
 let url
-if (process.env.NODE_ENV === 'development') url = 'http://localhost:8000'
-else url = 'https://server:8000'
+if (process.env.NODE_ENV === 'development') url = 'http://localhost:3002'
+else url = 'https://mainframe:8000'
 
 export const API_URL = url
 

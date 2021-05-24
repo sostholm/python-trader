@@ -14,8 +14,8 @@ import os
 from models             import fetch
 from util               import process_to_lower_with_underscore, aggregate_balance, make_wallets
 from web_push           import send_web_push
-import logging
 import sys
+import logging
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 

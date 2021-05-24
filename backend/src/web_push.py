@@ -8,15 +8,16 @@ from util import get_secret
 VAPID_PRIVATE_KEY = None
 VAPID_PUBLIC_KEY = None
 
-try:
-    VAPID_PRIVATE_KEY = open('private_key.txt', "r").readline().strip("\n")
-except:
+
+if 'VAPID_PRIVATE_KEY' in os.environ:
+    VAPID_PRIVATE_KEY = os.environ["VAPID_PRIVATE_KEY"]
+else:
     VAPID_PRIVATE_KEY = get_secret('vapid_key_txt').strip("\n")
     # VAPID_PRIVATE_KEY = open('/run/secrets/vapid_key_txt', "r+").readline().strip("\n")
 
-try:
-    VAPID_PUBLIC_KEY = open('public_key.txt', "r").read().strip("\n")
-except:
+if 'VAPID_PUBLIC_KEY' in os.environ:
+    VAPID_PRIVATE_KEY = os.environ["VAPID_PUBLIC_KEY"]
+else:
     VAPID_PUBLIC_KEY = get_secret('vapid_public_key_txt').strip("\n")
     # VAPID_PUBLIC_KEY = open('/run/secrets/vapid_public_key_txt', "r+").read().strip("\n")
 

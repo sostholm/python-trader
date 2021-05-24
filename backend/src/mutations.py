@@ -39,7 +39,7 @@ class AddCoinGecko(graphene.Mutation):
 
 class AddAccount(graphene.Mutation):
     class Input:
-        exchange_id     = graphene.String(required=True)
+        exchange_name   = graphene.String(required=True)
         api_key         = graphene.String(required=True)
         secret          = graphene.String(required=True)
         password        = graphene.String(required=True)
@@ -49,13 +49,13 @@ class AddAccount(graphene.Mutation):
     @staticmethod
     async def mutate(root, info, **input):
         id = info.context['request'].user.display_name
-        exchange = await info.context['client'].trader.exchanges.find_one({'_id': input['exchange_id']})
+        exchange = await info.context['request'].app.mongo.trader.exchanges.find_one({'name': input['exchange_name']})
         account =  dict(
             exchange    = exchange['_id'],
             api_key     = password_encrypt(message=input['api_key'].encode('utf-8'), password=input['password']).decode('utf-8'),
             secret      = password_encrypt(message=input['secret'].encode('utf-8'), password=input['password']).decode('utf-8')
         )
-        await info.context['request'].app.mongo.trader.users.update_one({'_id': ObjectId(id)}, {'$push': {'account': account}})
+        await info.context['request'].app.mongo.trader.users.update_one({'_id': ObjectId(id)}, {'$push': {'accounts': account}})
         return AddAccount(account=account)
 
 class AddWallet(graphene.Mutation):

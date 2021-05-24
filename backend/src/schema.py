@@ -15,7 +15,7 @@ from exchanges import AddBittrexOrder
 from starlette.authentication import requires
 import mutations
 from bson import ObjectId
-from exchanges import Bittrex, Cdc, GateIO, Ethereum, Binance, Balance
+from exchanges import Bittrex, Cdc, GateIO, Ethereum, Cardano, Binance, Balance
 # from mutations import AddCoinGecko
 import time
 from web_push import send_web_push
@@ -55,6 +55,7 @@ class Query(graphene.ObjectType):
     crypto_cdc  = graphene.Field(Cdc)
     gateio      = graphene.Field(GateIO)
     ethereum    = graphene.Field(Ethereum)
+    cardano     = graphene.Field(Cardano)
     coin_gecko  = graphene.Field(CoinGecko)
     binance     = graphene.Field(Binance)
     notify      = graphene.Field(graphene.String, args={'id': graphene.String(), 'text': graphene.String()})
@@ -119,6 +120,9 @@ class Query(graphene.ObjectType):
 
     def resolve_ethereum(self, info):
         return Ethereum()
+
+    def resolve_cardano(self, info):
+        return Cardano()
 
     async def resolve_coin_gecko(self, info):
         fields = get_projection(info, True)

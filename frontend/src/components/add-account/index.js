@@ -7,6 +7,7 @@ import MenuItem from '@material-ui/core/MenuItem'
 import InputLabel from '@material-ui/core/InputLabel'
 import FormControl from '@material-ui/core/FormControl'
 import { useQuery, useMutation, gql } from '@apollo/client'
+import PasswordDialog from 'components/dialogs/password-dialog'
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -26,15 +27,14 @@ const useStyles = makeStyles((theme) => ({
 const EXCHANGES = gql`
 query{
     exchanges{
-        id
         name
     }
 }
 `
 
 const ADD_ACCOUNT = gql`
-  mutation addAccount($apiKey: String!, $secret: String!, $exchangeId: String!){
-    addAccount(apiKey: $apiKey, secret: $secret, exchangeId: $exchangeId){
+  mutation addAccount($apiKey: String!, $secret: String!, $password: String!,$exchangeName: String!){
+    addAccount(apiKey: $apiKey, secret: $secret, password: $password,exchangeName: $exchangeName){
         account{
             apiKey
         }
@@ -46,6 +46,7 @@ const ADD_ACCOUNT = gql`
 export default function AddAccount(props){
     const [apiKey, setApiKey] = useState('')
     const [apiSecret, setApiSecret] = useState('')
+    const [password, setPassword] = useState('')
     const [exchange, setExchange] = useState()
     const classes = useStyles()
     const [add_account, { data: mutation_data }] = useMutation(ADD_ACCOUNT)
@@ -56,7 +57,8 @@ export default function AddAccount(props){
                 variables: {
                     apiKey: apiKey, 
                     secret: apiSecret,
-                    exchangeId: exchange.id
+                    password: password,
+                    exchangeName: exchange
             }
         })
     }
@@ -65,6 +67,7 @@ export default function AddAccount(props){
 
     return(
         <div className={classes.root}>
+            <PasswordDialog setPassword={setPassword} open={password === ''}/>
             <FormControl className={classes.formControl}>
                 <InputLabel id="demo-simple-select-label">Exchange</InputLabel>
                 <Select
@@ -75,7 +78,7 @@ export default function AddAccount(props){
                 >
                 {
                     data && (
-                        data.exchanges.map(item => <MenuItem value={item.id}>{item.name}</MenuItem>)
+                        data.exchanges.map(item => <MenuItem value={item.name}>{item.name}</MenuItem>)
                     )
                 }
                 </Select>

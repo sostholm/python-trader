@@ -4,7 +4,7 @@ services:
         image: ptrader-backend
         build: ./backend
         environment:
-            - DATABASE_HOSTNAME=server
+            - DATABASE_HOSTNAME=mongo
             - WORKER=ptrader-worker
         secrets:
             - mongo_password
@@ -24,7 +24,7 @@ services:
             context: ./backend/
             dockerfile: worker.Dockerfile
         environment:
-            - DATABASE_HOSTNAME=server
+            - DATABASE_HOSTNAME=mongo
             - AI=ptrader-ai
         secrets:
             - mongo_password
@@ -70,7 +70,26 @@ services:
             driver: loki
             options:
                 loki-url: "http://localhost:3100/loki/api/v1/push"
+
+    mongo:
+        image: mongo
+        environment:
+            MONGO_INITDB_ROOT_USERNAME_FILE: /run/secrets/mongo_username
+            MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongo_password
+        ports:
+            - 27017:27017
+        volumes:
+            - mongo_mongodb:/data/db
+        secrets:
+            - mongo_username
+            - mongo_password
+        logging:
+            driver: loki
+            options:
+                loki-url: "http://localhost:3100/loki/api/v1/push"
 secrets:
+    mongo_username:
+        external: true
     mongo_password:
         external: true
     cert:
@@ -83,5 +102,5 @@ secrets:
         external: true
 
 volumes:
-    sambashare:
+    mongo_mongodb:
         external: true

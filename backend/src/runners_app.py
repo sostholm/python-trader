@@ -22,13 +22,17 @@ import bcrypt
 import asyncio
 import os
 import time
+import aiohttp
 from models         import User
 from database       import get_client
 from bson           import ObjectId
 from datetime       import datetime
 from multiprocessing import Process
 import background_process
-from async_mongo_logger import Logger
+import sys
+import logging
+
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 tasks = {}
 
@@ -85,30 +89,34 @@ async def on_startup():
     trader_database = get_client(asyncio.get_running_loop()).trader
     client = get_client(asyncio.get_running_loop())
     app.__dict__['mongo'] = client
+    app.__dict__['aiohttp_session'] = aiohttp.ClientSession()
+    
     users = await client.trader.users.find({}, {'_id': True}).to_list(length=1000)
+    
     for user in users:
         _id = ObjectId(user['_id'])
         await client.trader.users.update_one({'_id': _id}, {'$set': {'loop_state': 'stopped'}}, upsert=True)
     
-    logger = Logger(name='coin_gecko', client=client, database='logs', collection='trader', log_to_console=True)
-    await logger.info('Set all loops to stopped')
+    
+    logging.info('Set all loops to stopped')
     
     tasks['gecko']              = asyncio.ensure_future(background_process.coin_gecko())
     tasks['coin_gecko_hourly']  = asyncio.ensure_future(background_process.coin_gecko_hourly())
-    await logger.info('Started tasks')
+    
+    logging.info('Started tasks')
 
 async def on_shutdown():
     global trader_database 
+    
     trader_database = get_client(asyncio.get_running_loop()).trader
     client = get_client(asyncio.get_running_loop())
-    logger = Logger(name='coin_gecko', client=client, database='logs', collection='trader', log_to_console=True)
-    await logger.info('Set all loops to stopped')
+
+    logging.info('Set all loops to stopped')
+    
     gecko_collection = client.trader.coin_gecko.find_one({})
     coin_gecko = await gecko_collection
     gecko_collection.update_one({'_id': coin_gecko['_id']}, {'$set': {'hourly':'stopped', 'loop_state': 'stopped'}} , upsert=False)
-    # coin_gecko = CoinGecko.object().first()
-    # coin_gecko.loop_state = 'stopped'
-    # coin_gecko.save()
+
 
 app = Starlette(debug=True, routes=routes, middleware=middleware, on_startup=[on_startup], on_shutdown=[on_shutdown])
 

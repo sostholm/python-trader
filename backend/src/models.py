@@ -47,37 +47,6 @@ async def fetch(session, url, type='get', body={}):
                 raise Exception(resp.reason)
             resp = await resp.text()
             return json.loads(resp)
-        
-
-# class Order(graphene.ObjectType):
-#     side        = StringField()
-#     fee         = FloatField()
-#     created_at  = DateTimeField()
-#     deal_price  = FloatField()
-#     avg_price   = FloatField()
-#     volume      = FloatField()
-#     price       = FloatField()
-#     status_msg  = StringField()
-#     remain_volume = FloatField()
-#     baseCoin    = StringField()
-#     countCoin   = StringField()
-#     status      = IntField()
-#     all_details = DictField()
-
-# class Order1(graphene.ObjectType):
-#     side        = graphene.String()
-#     fee         = graphene.Float()
-#     created_at  = graphene.DateTime()
-#     deal_price  = graphene.Float()
-#     avg_price   = graphene.Float()
-#     volume      = graphene.Float()
-#     price       = graphene.Float()
-#     status_msg  = graphene.String()
-#     remain_volume = graphene.Float()
-#     baseCoin    = graphene.String()
-#     countCoin   = graphene.String()
-#     status      = graphene.Int()
-#     all_details = graphene.JSONString()
 
 
 class Position(ObjectType):
@@ -218,65 +187,6 @@ class PredictionHistoryEntry(ObjectType):
 class PredictionHistory(ObjectType):
     user                = Field(CoinGecko)
     bitcoin_predictions = List(PredictionHistoryEntry)
-
-# class TotalValue(ObjectType):
-#     timestamp       = DateTime()
-#     usd_value       = Int()
-
-# class ValueHistory(ObjectType):
-#     # meta            = {'collection': 'value_history'}
-#     user            = String()
-#     total_value     = List(Field(TotalValue))
-
-# class UserN(MongoengineObjectType):
-#     class Meta:
-#         model = User
-#         interfaces = (Node,)
-
-# class AccountNode(MongoengineObjectType):
-#     class Meta:
-#         model = Account
-#         interfaces = (Node,)
-
-# class ExchangeNode(MongoengineObjectType):
-#     class Meta:
-#         model = Exchange
-
-#     instruments         = graphene.JSONString()
-#     exchange_tickers    = graphene.JSONString()
-#     coins               = graphene.JSONString()
-#     coin_ticker         = graphene.JSONString()
-
-#     async def resolve_exchange_tickers(self, info):
-#         return fetch(f'https://api.coingecko.com/api/v3/exchanges/{self.name.lower()}/tickers')
-
-#     async def resolve_instruments(self, info):
-#         if self.instruments_url:
-#             return fetch(self.instruments_url)
-
-# class WalletNode(MongoengineObjectType):
-#     class Meta:
-#         model = Wallet
-#         interfaces = (Node,) 
-
-# class WalletTypeNode(MongoengineObjectType):
-#     class Meta:
-#         model = WalletType
-
-# class PositionNode(MongoengineObjectType):
-#     class Meta:
-#         model = Position
-#         interfaces = (Node,)
-
-# class OrderNode(graphene.ObjectType):
-#     class Meta:
-#         model = Order1
-#         interfaces = (Node,)
-
-# class CoinGeckoNode(MongoengineObjectType):
-#     class Meta:
-#         model = CoinGecko
-#         interfaces = (Node,)
 
     
 
