@@ -10,6 +10,7 @@ from bson import ObjectId
 import asyncio
 import jwt
 from datetime import datetime, timedelta
+from guard import guard
 
 
 class AddUser(graphene.Mutation):
@@ -32,6 +33,7 @@ class AddCoinGecko(graphene.Mutation):
     
     coin_gecko = graphene.Field(CoinGecko)
     @staticmethod
+    @guard('admin')
     def mutate(root, info, **input):
         cg = CoinGecko()
         cg.save()

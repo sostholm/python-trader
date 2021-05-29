@@ -20,6 +20,7 @@ from exchanges import Bittrex, Cdc, GateIO, Ethereum, Cardano, Binance, Balance
 import time
 from web_push import send_web_push
 from requested_fields import get_projection
+from guard import guard
 # api_key = os.environ['api_key']
 # secret  = os.environ['secret']
 
@@ -74,6 +75,7 @@ class Query(graphene.ObjectType):
     #     user_id  = args.get('id')
     #     user = User.objects(id=user_id).first()
     #     return user
+
     async def resolve_me(self, info):
         id, fields, client = get_user_projection_and_mongo(info)
         user = await client.trader.users.find_one({'_id': ObjectId(id)}, fields)
@@ -132,6 +134,7 @@ class Query(graphene.ObjectType):
     def resolve_binance(self, info):
         return Binance()
 
+    guard('notify')
     async def resolve_notify(self, info, id, text):
         if id == '':
             id = info.context['user'].id
