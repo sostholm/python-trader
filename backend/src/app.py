@@ -79,8 +79,9 @@ class AuthMiddleware:
 routes = [
     Route('/', helloworld),
     Route('/login', login, methods=['POST']),
-    Route('/graphql', GraphQLApp(schema=schema, executor_class=AsyncioExecutor, middleware=[AuthMiddleware()]))
-    ]
+    Route('/graphql', GraphQLApp(schema=schema, executor_class=AsyncioExecutor))
+]
+    # Route('/graphql', GraphQLApp(schema=schema, executor_class=AsyncioExecutor, middleware=[AuthMiddleware()]))
 
 class TimerMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):

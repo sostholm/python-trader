@@ -50,7 +50,6 @@ async def fetch(session, url, type='get', body={}):
 
 
 class Position(ObjectType):
-    # currency_pair   = ReferenceField('CurrencyPair')
     held_currency   = String()
     amount          = Float()
     date            = DateTime()
@@ -58,7 +57,6 @@ class Position(ObjectType):
     full_info       = JSONString()
 
 class Exchange(ObjectType):
-    # meta            = {'collection': 'exchanges'}
     name            = String()
 
 class Order(graphene.ObjectType):
@@ -119,7 +117,6 @@ class State(Enum):
 
 class CoinGecko(ObjectType):
     last_price_update   = DateTime()
-    # current_prices      = DictField(default={})
     coin_list           = List(JSONString)
     subscriptions       = List(String)
     loop_state          = Field(State)
@@ -136,7 +133,6 @@ class WalletType(ObjectType):
     name = String()
 
 class Wallet(ObjectType):
-    # meta            = {'collection': 'wallets'}
     name            = String()
     address         = String()
     wallet_type     = Field(WalletType)
@@ -159,7 +155,6 @@ class UserBalance(ObjectType):
     exchange                                = String()
 
 class User(ObjectType):
-    # meta            = {'collection': 'users'}
     username        = String()
     password        = String()
     last_update     = Int()
@@ -170,6 +165,12 @@ class User(ObjectType):
     wallets         = List(Wallet)
     events          = List(Event)
     portfolio_value = Float()
+
+    def resolve_password(root, info, **kwargs):
+        return '***************'
+
+class Role(ObjectType):
+    permissions = List(String)
 
 class ValueHistoryEntry(ObjectType):
     total_usd       = Float()
