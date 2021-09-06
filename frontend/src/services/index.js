@@ -44,13 +44,15 @@ export const refresh_token = async (old) => {
   return result.data.updateToken.token
 }
 
-export function createGQL(token) {
+export function createGQL(){
   const httpLink = createHttpLink({
     uri: API_URL + '/graphql',
   });
 
   const authLink = setContext((_, { headers }) => {
-
+    
+    const token = localStorage.getItem('token')
+    
     return {
       headers: {
         ...headers,
@@ -135,6 +137,14 @@ query{
     name
   }
 }
+`
+
+export const login = (username, password) => `
+mutation{
+    login(username:"${username}", password: "${password}"){
+      token
+    }
+  }
 `
 
 export const add_account = (api_key, api_secret, exchange_id) => `

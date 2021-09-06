@@ -41,9 +41,9 @@ const logout = () => {
   window.location.reload()
 }
 
+const client = createGQL()
+
 function App() {
-  const [token, setToken] = useState()
-  const [client, setClient] = useState()
   const [item, setItem] = useState()
   const [loggedIn, setLoggedIn] = useState(false)
   const [view, setView] = useState('Login')
@@ -52,11 +52,10 @@ function App() {
     if (!loggedIn && view !== 'Login') {
       setView('Login')
     }
-    else if (loggedIn && !client && token) {
-      setClient(createGQL(token))
+    else if (loggedIn) {
       setView('Balance')
     }
-  }, [loggedIn, token])
+  }, [loggedIn])
 
   const views = [
     { key: 'Login', text: 'Login' },
@@ -71,16 +70,15 @@ function App() {
     <div className="App">
       <div className="App-header">
         <ThemeProvider theme={darkTheme}>
-          {view === 'Login' && <Login loggedIn={loggedIn} setLoggedIn={setLoggedIn} setToken={setToken} setView={setView} />}
-
-          {client && <ApolloProvider client={client}>
+        <ApolloProvider client={client}>
+            {view === 'Login' && <Login loggedIn={loggedIn} setLoggedIn={setLoggedIn} setView={setView} />}
             {<Drawer views={views} setView={setView} logout={logout} />}
             {loggedIn && view === 'Balance' &&  <Balance />}
-            {loggedIn && view == 'Settings' &&  <Settings />}
+            {loggedIn && view === 'Settings' &&  <Settings />}
             {loggedIn && view === 'Add Account' && <AddAccount />}
             {loggedIn && view === 'Add Wallet' && <AddWallet />}
             {loggedIn && view === 'Add Token' && <AddToken />}
-          </ApolloProvider>}
+          </ApolloProvider>
         </ThemeProvider>
       </div>
     </div>

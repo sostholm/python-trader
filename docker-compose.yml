@@ -1,7 +1,7 @@
 version: "3.8"
 services:
     ptrader-backend:
-        image: ptrader-backend
+        image: registry.gitlab.com/sostholm/python-trader/ptrader-backend
         build: ./backend
         environment:
             - DATABASE_HOSTNAME=mongo
@@ -13,13 +13,13 @@ services:
             - vapid_key_txt
             - vapid_public_key_txt
         ports:
-            - 8000:8000
+            - 8001:8000
         logging:
             driver: loki
             options:
                 loki-url: "http://localhost:3100/loki/api/v1/push"    
     ptrader-worker:
-        image: ptrader-worker
+        image: registry.gitlab.com/sostholm/python-trader/ptrader-worker
         build:
             context: ./backend/
             dockerfile: worker.Dockerfile
@@ -37,7 +37,7 @@ services:
             options:
                 loki-url: "http://localhost:3100/loki/api/v1/push"
     ptrader-ai:
-        image: ptrader-ai
+        image: registry.gitlab.com/sostholm/python-trader/ptrader-ai
         build:
             context: ./backend/
             dockerfile: ai.Dockerfile
@@ -54,7 +54,7 @@ services:
             options:
                 loki-url: "http://localhost:3100/loki/api/v1/push"
     ptrader-frontend:
-        image: ptrader-frontend
+        image: registry.gitlab.com/sostholm/python-trader/ptrader-frontend
         build: ./frontend
         secrets:
             # - db_password
@@ -63,7 +63,7 @@ services:
         environment:
             - NODE_ENV=production
         ports:
-            - 8001:8001
+            - 8000:8000
         volumes:
             - "./secrets:/app/secrets"
         logging:
